@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+#![feature(panic_info_message)]
 #![allow(unused)]
 use core::arch::global_asm;
 use core::arch::asm;
@@ -60,6 +61,7 @@ pub fn rust_main() {
         driver::init();
         console::print_banner();
         kernel!("drivers initialized");
+        mem::init();
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
     }else {
@@ -69,8 +71,20 @@ pub fn rust_main() {
 }
 
 #[panic_handler]
-fn panic_handler(_: &core::panic::PanicInfo) -> !{
-    error!("kernel paniced");
-    panic!()
+fn panic_handler(info: &core::panic::PanicInfo) -> !{
+    match info.location() {
+        Some(loc) => {
+            if let Some(msg) = info.message() {
+                error!("kernel panicked at {}:{}, message: {}",loc.file(), loc.line(), msg.as_str().unwrap());
+            }else {
+                error!("kernel panicked at {}:{}",loc.file(), loc.line());
+            }
+        },
+        None => {
+            error!("kernel panicked");
+        }
+    }
+    
+    loop {}
 }
 
