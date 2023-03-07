@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+#![allow(unused)]
 use core::arch::global_asm;
 use core::arch::asm;
 use riscv::register::*;
@@ -12,9 +13,11 @@ mod driver;
 mod proc;
 #[macro_use]
 mod console;
+mod trap;
 
 global_asm!(include_str!("asm/entry.S"));
 
+// 引导内核启动，设置M模式下的寄存器，之后跳转到内核入口进入S模式
 #[no_mangle]
 pub fn rust_start() {
     unsafe {
@@ -35,7 +38,7 @@ pub fn rust_start() {
         // 物理地址保护，RWX=1, A=TOR, 范围[0,pmpaddr0)
         pmpcfg0::write(0b1111);
 
-        // 将hartid保存到tp寄存器（rust_main中会使用）
+        // 将hartid保存到tp寄存器
         let cpuid = mhartid::read();
         asm!("mv tp, {}", in(reg) cpuid);
         asm!("mret");
@@ -48,11 +51,15 @@ static KERNEL_INITED: AtomicU8 = AtomicU8::new(0);
 
 #[no_mangle]
 pub fn rust_main() {
-    if cpuid() == 0 {
+    let id = cpuid();
+    if id == 0 {
         // cpu0 init kernel
+        driver::init();
+        console::print_banner();
+        kernel!("drivers initialized");
+        kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
     }else {
-        // other cpu wait cpu0
         while KERNEL_INITED.load(Ordering::SeqCst) == 0 {}
     }
     // schedule proc
