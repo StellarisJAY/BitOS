@@ -1,6 +1,6 @@
 OUTPUT_ARCH(riscv)
 ENTRY(__entry)              # kernel entry point（.text.entry）
-BASE_ADDRESS = 0x80200000;   # kernel基地址（OpenSBI结束后的跳转地址）
+BASE_ADDRESS = 0x80000000;   # kernel基地址
 
 SECTIONS
 {

@@ -1,4 +1,4 @@
-.section .text
+.section .text.entry  # 启动代码在.text.entry
 .global __entry
 
 __entry:
