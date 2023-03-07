@@ -7,6 +7,8 @@ use core::arch::asm;
 use riscv::register::*;
 use proc::cpuid;
 
+extern crate alloc;
+
 mod config;
 mod register;
 mod driver;
@@ -14,6 +16,7 @@ mod proc;
 #[macro_use]
 mod console;
 mod trap;
+mod mem;
 
 global_asm!(include_str!("asm/entry.S"));
 

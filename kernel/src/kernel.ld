@@ -5,6 +5,8 @@ BASE_ADDRESS = 0x80000000;   # kernel基地址
 SECTIONS
 {
     . = BASE_ADDRESS;
+    # kernel起始地址
+    skernel = .;
     .text : {
         *(.text.entry)    # entry段，kernel entry code
         *(.text, .text.*) # text段
@@ -29,7 +31,8 @@ SECTIONS
     }
     ebss = .;
     . = ALIGN(4K);
-
+    # kernel 内存结束位置
+    ekernel = .;
     /DISCARD/ : {
         *(.eh_frame)
     }
