@@ -1,7 +1,7 @@
 TOOL = "riscv64-unknown-elf-"
 TARGET = "./target/riscv64gc-unknown-none-elf/release/"
 CPUS = 4
-QEMU_OPTS = -machine virt -bios none -kernel $(TARGET)kernel.bin -smp $(CPUS) -nographic
+QEMU_OPTS = -machine virt -bios none -kernel $(TARGET)kernel.bin -smp $(CPUS) -nographic 
 build:
 	@cargo build --release
 bin:build
