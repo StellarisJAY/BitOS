@@ -67,6 +67,7 @@ pub fn rust_main() {
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> !{
-    panic!("unavailable");
+    error!("kernel paniced");
+    panic!()
 }
 
