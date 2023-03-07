@@ -70,7 +70,7 @@ impl Uart {
         let ptr = reg_addr(THR) as *mut u8;
         loop {
             // 等待THR空闲
-            if read_reg(LSR) & (1<<5) == 0 {
+            if read_reg(LSR) & (1<<5) != 0 {
                 break;
             }
         }
