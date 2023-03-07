@@ -18,12 +18,12 @@ pub trait MemAllocator {
 }
 
 // Frame 物理页帧
-struct Frame {
-    ppn: PhysPageNumber
+pub struct Frame {
+    pub ppn: PhysPageNumber
 }
 
 // 物理页内存分配器
-struct VecAllocator {
+pub struct VecAllocator {
     end_ppn: usize,
     current_ppn: usize,
     recycled: Vec<usize>,
@@ -36,20 +36,20 @@ lazy_static! {
 }
 
 pub fn init() {
-    let allocator = ALLOCATOR.lock();
+    let mut allocator = ALLOCATOR.lock();
     allocator.init();
     drop(allocator);
 }
 
 pub fn alloc() -> Option<Frame> {
-    let allocator = ALLOCATOR.lock();
+    let mut allocator = ALLOCATOR.lock();
     let ppn = allocator.alloc();
     drop(allocator);
     return ppn.map(|p|{Frame{ppn: p}});
 }
 
 pub fn dealloc(ppn: PhysPageNumber) {
-    let allocator = ALLOCATOR.lock();
+    let mut allocator = ALLOCATOR.lock();
     allocator.dealloc(ppn);
     drop(allocator);
 }
