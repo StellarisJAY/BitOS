@@ -57,6 +57,14 @@ impl PageTableEntry {
     pub fn is_writable(&self) -> bool {
         return PteFlags::W.bits & self.bits != 0;
     }
+    
+    pub fn is_readalbe(&self) -> bool {
+        return PteFlags::R.bits & self.bits != 0;
+    }
+    
+    pub fn is_executable(&self) -> bool {
+        return PteFlags::X.bits & self.bits != 0;
+    }
 }
 
 impl PageTable {
