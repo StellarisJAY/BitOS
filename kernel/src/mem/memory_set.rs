@@ -2,7 +2,7 @@ use super::address::*;
 use super::allocator::{alloc, dealloc, Frame};
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
-use super::page_table::{PageTable};
+use super::page_table::{PageTable, PageTableEntry};
 use bitflags::bitflags;
 use crate::config::{PAGE_SIZE};
 
@@ -78,5 +78,17 @@ impl MemorySet {
     pub fn insert_area(&mut self, mut area: MemoryArea, data: Option<&[u8]>) {
         area.map(&mut self.page_table, data);
         self.areas.push(area);
+    }
+
+    pub fn translate(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {
+        return self.page_table.translate(vpn);
+    }
+    
+    pub fn vpn_to_ppn(&self, vpn: VirtPageNumber) -> Option<PhysPageNumber> {
+        return self.page_table.vpn_to_ppn(vpn);
+    }
+
+    pub fn va_to_pa(&self, va: VirtAddr) -> Option<PhysAddr> {
+        return self.page_table.va_to_pa(va);
     }
 }
