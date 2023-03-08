@@ -1,4 +1,5 @@
 use crate::config::{PAGE_SIZE};
+use super::page_table::{PageTableEntry};
 
 const SV39_PA_BITS: usize = 56;  // 物理地址长度
 const SV39_PPN_BITS: usize = 44; // 物理页号长度：44bits
@@ -38,6 +39,13 @@ impl PhysPageNumber {
             }
         }
     }
+    // 将物理页转换成page table entry数组
+    pub fn as_ptes(&self) -> &[PageTableEntry] {
+        let ptr = self.base_addr() as *const PageTableEntry;
+        unsafe {
+            return core::slice::from_raw_parts(ptr, PAGE_SIZE / 8);
+        }
+    }
 }
 
 impl PhysAddr {
@@ -51,3 +59,13 @@ impl PhysAddr {
     }
 }
 
+impl VirtAddr {
+    // 获取虚拟地址的vpn
+    pub fn vpn(&self) -> VirtPageNumber {
+        return VirtPageNumber((self.0 >> SV39_OFF_BITS) & ((1<<SV39_VA_BITS - 1)));
+    }
+    // 获取页内偏移
+    pub fn offset(&self) -> usize {
+        return self.0 & ((1<<SV39_OFF_BITS) - 1);
+    }
+}
