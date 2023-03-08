@@ -22,10 +22,10 @@ impl PhysPageNumber {
         return self.0 << SV39_OFF_BITS;
     }
     // 获取物理页的数据
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &mut [u8] {
         unsafe {
-            let ptr = self.base_addr() as *const u8;
-            return core::slice::from_raw_parts(ptr, PAGE_SIZE);
+            let ptr = self.base_addr() as *mut u8;
+            return core::slice::from_raw_parts_mut(ptr, PAGE_SIZE);
         }
     }
 
