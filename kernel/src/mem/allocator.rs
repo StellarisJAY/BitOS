@@ -89,6 +89,8 @@ impl MemAllocator for VecAllocator {
 // Drop 自动回收物理页
 impl Drop for Frame {
     fn drop(&mut self) {
+        // 清空物理页的数据
+        self.ppn.as_bytes().fill(0);
         dealloc(self.ppn);
     }
 }
