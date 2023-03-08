@@ -56,3 +56,12 @@ macro_rules! kernel {
         $crate::console::print_str("\n");
     }
 }
+
+#[macro_export]
+macro_rules! debug {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print_str("[debug] ");
+        $crate::console::print(format_args!($fmt $(, $($arg)+)?));
+        $crate::console::print_str("\n");
+    }
+}
