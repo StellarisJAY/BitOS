@@ -2,6 +2,7 @@ use super::address::*;
 use super::memory_set::{MapMode, MemPermission, MemoryArea, MemorySet};
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
+use alloc::vec;
 
 // 内核内存集合
 lazy_static! {
@@ -16,7 +17,7 @@ extern "C" {
 }
 
 impl MemorySet {
-    // 初始化内核，将内核内存直接映射到页表
+    // 初始化内核地址空间，将内核内存直接映射到页表
     pub fn init_kernel() {
         let mut memory_set = KERNEL_MEMSET.lock();
         // 内核.text段，R|X
@@ -25,7 +26,6 @@ impl MemorySet {
                 VirtAddr(etext as usize).vpn(),
                 MapMode::Direct,
                 MemPermission::X.bits() | MemPermission::R.bits()), None);
-        kernel!("kernlel .text section mapped, vpn range: [{},{}]", VirtAddr(stext as usize).vpn().0, VirtAddr(etext as usize).vpn().0);
         // 内核.rodata段，只读
         memory_set.insert_area(MemoryArea::new(
                 VirtAddr(srodata as usize).vpn(),
@@ -51,14 +51,25 @@ impl MemorySet {
 #[allow(unused)]
 pub fn kernel_map_test() {
     let memory_set = KERNEL_MEMSET.lock();
-    let text = VirtAddr(stext as usize).vpn();
-    debug!("text range: {}, {}", stext as usize, etext as usize);
-    debug!("text vpn: {}", text.0);
-    let pte = memory_set.translate(text).unwrap();
-    assert!(!pte.is_writable(), "should not be writable");
-    debug!("ppn: {}, vpn: {}", pte.page_number().0, text.0);
-    assert!(pte.page_number().0 == text.0, "should be direct map");
-    drop(memory_set);
 
+    let in_rodata = (srodata as usize + erodata as usize) / 2;
+    let in_text = (stext as usize + etext as usize) / 2;
+    let in_data = (sdata as usize + edata as usize) / 2;
+    let in_bss = (sbss as usize + ebss as usize) / 2;
+
+    let cases = vec![in_rodata, in_text, in_data, in_bss];
+    let writable = vec![false, false, true, true];
+    let executable = vec![false, true, false, false];
+
+    for (i, case) in cases.iter().enumerate() {
+        let vpn = VirtAddr(*case).vpn();
+        let pte = memory_set.translate(vpn).unwrap();
+        assert!(pte.is_readalbe(), "should be readable");
+        assert!(pte.is_writable() == writable[i], "writable failed");
+        assert!(pte.is_executable() == executable[i], "executable failed");
+        assert!(pte.page_number().0 == vpn.0, "direct map failed");
+        debug!("kernel map test case-{} passed", i);
+    }
+    drop(memory_set);
     kernel!("kernel memory map test passed!");
 }
