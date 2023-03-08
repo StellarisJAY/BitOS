@@ -7,13 +7,13 @@ const SV39_VA_BITS: usize = 39;  // 虚拟内存长度：39bits，最大512GiB�
 const SV39_VPN_BITS: usize = 27; // 虚拟页号 27bits，三级页表每级9bits，最大寻址：2^27个物理页
 const SV39_OFF_BITS: usize = 12; // 页内偏移 12bits，共4KiB范围
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysPageNumber (pub usize);
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysAddr (pub usize);
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VirtPageNumber (pub usize);
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VirtAddr (pub usize);
 
 impl PhysPageNumber {
