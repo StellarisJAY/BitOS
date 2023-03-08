@@ -7,22 +7,25 @@ SECTIONS
     . = BASE_ADDRESS;
     # kernel起始地址
     skernel = .;
+    stext = .;
     .text : {
         *(.text.entry)    # entry段，kernel entry code
         *(.text, .text.*) # text段
     }
     . = ALIGN(4K);
-
+    etext = .;
+    srodata = .;
     .rodata : {
         *(.rodata, .rodata.*) # rodata段
     }
     . = ALIGN(4K);
-
+    erodata = .;
+    sdata = .;
     .data : {
         *(.data, .data.*) # data段
     }
     . = ALIGN(4K);
-
+    edata = .;
     sbss = .;
     .bss : {
         *(.bss.stack)   # bss段的boot stack
