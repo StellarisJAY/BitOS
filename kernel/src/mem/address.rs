@@ -22,7 +22,7 @@ impl PhysPageNumber {
         return self.0 << SV39_OFF_BITS;
     }
     // 获取物理页的数据
-    pub fn as_bytes(&self) -> &mut [u8] {
+    pub fn as_bytes(&self) -> &'static mut [u8] {
         unsafe {
             let ptr = self.base_addr() as *mut u8;
             return core::slice::from_raw_parts_mut(ptr, PAGE_SIZE);
@@ -40,10 +40,10 @@ impl PhysPageNumber {
         }
     }
     // 将物理页转换成page table entry数组
-    pub fn as_ptes(&self) -> &[PageTableEntry] {
-        let ptr = self.base_addr() as *const PageTableEntry;
+    pub fn as_ptes(&self) -> &'static mut [PageTableEntry] {
+        let ptr = self.base_addr() as *mut PageTableEntry;
         unsafe {
-            return core::slice::from_raw_parts(ptr, PAGE_SIZE / 8);
+            return core::slice::from_raw_parts_mut(ptr, PAGE_SIZE / 8);
         }
     }
 }
@@ -62,7 +62,7 @@ impl PhysAddr {
 impl VirtAddr {
     // 获取虚拟地址的vpn
     pub fn vpn(&self) -> VirtPageNumber {
-        return VirtPageNumber((self.0 >> SV39_OFF_BITS) & ((1<<SV39_VA_BITS - 1)));
+        return VirtPageNumber((self.0 >> SV39_OFF_BITS) & ((1<<SV39_VPN_BITS) - 1));
     }
     // 获取页内偏移
     pub fn offset(&self) -> usize {

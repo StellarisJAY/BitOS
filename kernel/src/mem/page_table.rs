@@ -40,15 +40,17 @@ impl PageTableEntry {
             bits: (ppn.0 << SV39_PTE_FLAG_BITS) | (flags & ((1<<SV39_PTE_FLAG_BITS) - 1))
         }
     }
-    pub fn set(&mut self, ppn: PhysPageNumber, flags: usize) {
-        self.bits = self.bits | (ppn.0 << SV39_PTE_FLAG_BITS) | (flags & ((1<<SV39_PTE_FLAG_BITS) - 1))
+    pub fn set_ppn(&mut self, ppn: PhysPageNumber) {
+        self.bits = self.bits | (ppn.0 << SV39_PTE_FLAG_BITS);
+    }
+
+    pub fn set_flags(&mut self, flags: usize) {
+        self.bits = self.bits | flags;
     }
     pub fn page_number(&self) -> PhysPageNumber {
         return PhysPageNumber((self.bits >> SV39_PTE_FLAG_BITS) & ((1<<SV39_PTE_PPN_BITS) - 1));
     }
-    pub fn set_valid(&mut self) {
-        self.bits | PteFlags::V.bits;
-    }
+
     pub fn is_valid(&self) -> bool {
         return PteFlags::V.bits & self.bits != 0;
     }
@@ -70,7 +72,7 @@ impl PageTable {
         let mut current_ppn = self.root_ppn;
         let mut level = 0;
         for num in levels {
-            let mut pte = current_ppn.as_ptes()[num];
+            let mut pte = &mut current_ppn.as_ptes()[num];
             // 遍历到最后一级页表，当前的pte的ppn指向vpn对应的物理页
             if level == levels.len() - 1 {
                 // 该pte已经映射到某一个ppn，panic
@@ -78,43 +80,47 @@ impl PageTable {
                     panic!("vpn {} already mapped", vpn.0);
                 }else {
                     // 将ppn写入叶子节点的pte
-                    pte.set(current_ppn, flags | PteFlags::V.bits);
+                    pte.set_ppn(ppn);
+                    pte.set_flags(flags | PteFlags::V.bits());
                 }
                 break;
             }
             // 非叶子节点 pte无效，需要分配下一级页表的物理页
             if !pte.is_valid() {
                 let frame = alloc().unwrap();
+                pte.set_ppn(frame.ppn);
+                pte.set_flags(PteFlags::V.bits());
+                let old_ppn = current_ppn;
                 current_ppn = frame.ppn;
                 self.frames.push(frame);
-                // 设置当前pte valid
-                pte.set(current_ppn, PteFlags::V.bits);
             }else {
                 current_ppn = pte.page_number();
             }
+            level+=1;
         }
     }
 
     // 解除虚拟页在当前页表的映射
     pub fn unmap(&mut self, vpn: VirtPageNumber) {
         self.find_pte(vpn)
-        .map(|mut pte| {
-            pte.set(PhysPageNumber(0), 0);
+        .map(|pte| {
+            *pte = PageTableEntry::new(PhysPageNumber(0), 0);
         });
     }
 
     // 找到vpn对应的叶子节点页表项
-    fn find_pte(&self, vpn: VirtPageNumber) -> Option<PageTableEntry> {
+    fn find_pte(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {
         let levels = divide_vpn(vpn);
         let mut ppn = self.root_ppn;
-        let mut pte: PageTableEntry;
+        let mut pte: &mut PageTableEntry;
         let mut i = 0;
         for num in levels {
-            pte = ppn.as_ptes()[num];
+            pte = &mut ppn.as_ptes()[num];
             if i == levels.len()-1{
-                return Some(pte)
+                return Some(pte);
             }
             if !pte.is_valid() {
+                debug!("find pte break at level: {}, pte bits: {:#b}", i, pte.bits);
                 break;
             }else {
                 ppn = pte.page_number();
@@ -138,6 +144,10 @@ impl PageTable {
             PhysAddr(pte.page_number().base_addr() + va.offset())
         });
     }
+
+    pub fn translate(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {
+        return self.find_pte(vpn);
+    }
 }
 
 // 将SV39的27位vpn分割成3个9bits的多级vpn
@@ -148,6 +158,7 @@ fn divide_vpn(vpn: VirtPageNumber) -> [usize; 3] {
     while number > 0 {
         parts[i] = number & 0x1ff;
         number = number >> 9;
+        i = i-1;
     }
     return parts;
 }
