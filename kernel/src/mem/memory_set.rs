@@ -4,6 +4,7 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use super::page_table::{PageTable};
 use bitflags::bitflags;
+use crate::config::{PAGE_SIZE};
 
 bitflags! {
     pub struct MemPermission: usize {
@@ -39,8 +40,9 @@ impl MemoryArea {
     pub fn new(start_vpn: VirtPageNumber, end_vpn: VirtPageNumber, mode: MapMode, perm: usize) -> Self {
         return Self { start_vpn: start_vpn, end_vpn: end_vpn, frames: BTreeMap::new(), mode: mode, perm: perm };
     }
-    // 将当前内存段的vpn范围映射到指定的页表
-    pub fn map(&mut self, page_table: &mut PageTable) {
+    // 将当前内存段的vpn范围映射到指定的页表，必要时拷贝数据
+    pub fn map(&mut self, page_table: &mut PageTable, data: Option<&[u8]>) {
+        let mut offset = 0;
         for vpn in self.start_vpn.0..self.end_vpn.0 {
             if self.mode == MapMode::Direct {
                 page_table.map(VirtPageNumber(vpn), PhysPageNumber(vpn), self.perm);
@@ -48,6 +50,12 @@ impl MemoryArea {
                 // 非直接映射，需要新的物理页
                 let frame = alloc().unwrap();
                 page_table.map(VirtPageNumber(vpn), frame.ppn, self.perm);
+                // 拷贝数据到当前的物理页
+                if let Some(bytes) = data {
+                    let limit = (offset + PAGE_SIZE).min(bytes.len());
+                    frame.ppn.as_bytes().copy_from_slice(&bytes[offset..limit]);
+                    offset = limit;
+                }
                 self.frames.insert(VirtPageNumber(vpn), frame);
             }
         }
@@ -58,5 +66,17 @@ impl MemoryArea {
             page_table.unmap(VirtPageNumber(vpn));
             self.frames.remove(&VirtPageNumber(vpn));
         }
+    }
+}
+
+impl MemorySet {
+    pub fn new() -> Self {
+        return Self {page_table: PageTable::new(), areas: Vec::new()};
+    }
+
+    // 内存集合中插入一个内存段
+    pub fn insert_area(&mut self, mut area: MemoryArea, data: Option<&[u8]>) {
+        area.map(&mut self.page_table, data);
+        self.areas.push(area);
     }
 }
