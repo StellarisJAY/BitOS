@@ -14,3 +14,17 @@ pub fn init() {
     }
 }
 
+
+#[allow(unused)]
+pub fn heap_test() {
+    use alloc::vec::Vec;
+    let mut v: Vec<usize> = Vec::new();
+    for i in 0..500 {
+        v.push(i);
+    }
+    for i in 0..500 {
+        assert_eq!(v[i], i);
+    }
+    drop(v);
+    println!("heap_test passed!");
+}
