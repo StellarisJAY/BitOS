@@ -85,7 +85,10 @@ impl MemorySet {
             fn strampoline();
         }
         // 所在地址空间虚拟地址最高页，映射到trampoline代码的物理地址
-        self.page_table.map(VirtAddr(TRAMPOLINE).vpn(), PhysAddr(strampoline as usize).page_number(), MemPermission::R | MemPermission::X);
+        self.page_table.map(
+                VirtAddr(TRAMPOLINE).vpn(),
+                PhysAddr(strampoline as usize).page_number(),
+                MemPermission::R.bits | MemPermission::X.bits);
     }
 
     pub fn translate(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {

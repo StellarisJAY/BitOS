@@ -1,6 +1,7 @@
 use super::address::*;
 use super::memory_set::*;
 use elf::ElfBytes;
+use elf::endian::AnyEndian;
 use crate::config::*;
 
 const PT_LOAD: u32 = 0;
@@ -8,8 +9,8 @@ const PT_LOAD: u32 = 0;
 impl MemorySet {
     // 从app的elf文件创建内存集合
     pub fn from_elf_data(data: &[u8]) -> Self {
-        let memset = Self::new();
-        let elf = ElfBytes::minimal_parse(data).unwrap();
+        let mut memset = Self::new();
+        let elf = ElfBytes::<AnyEndian>::minimal_parse(data).unwrap();
         // 映射elf segments
         let segments = elf.segments().unwrap();
         let mut max_vpn = 0;
@@ -22,7 +23,7 @@ impl MemorySet {
                         start_va.vpn(),
                         end_va.vpn(),
                         MapMode::Indirect,
-                        seg.p_flags & 0b111 as usize), // RWX flags
+                        (seg.p_flags & 0b111) as usize), // RWX flags
                 Some(elf.segment_data(&seg).unwrap())); // copy data
                 max_vpn = end_va.vpn().0;
             }
@@ -34,7 +35,7 @@ impl MemorySet {
                 stack_bottom_vpn,
                 stack_top_vpn,
                 MapMode::Indirect,
-                MemPermission::R | MemPermission::W
+                MemPermission::R.bits() | MemPermission::W.bits()
         ), None);
         // 映射Trampoline
         memset.map_trampoline();
