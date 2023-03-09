@@ -5,7 +5,7 @@
 
 mod syscall;
 #[macro_use]
-mod utils;
+pub mod utils;
 
 const USER_HEAP_SIZE: usize = 4096 * 1024;
 
@@ -47,8 +47,8 @@ fn panic_handler(info: &core::panic::PanicInfo) -> !{
             println!("app panicked");
         }
     }
-
     exit(-1);
+    loop{}
 }
 
 pub fn exit(code: i32) {
