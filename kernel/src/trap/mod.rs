@@ -1,6 +1,8 @@
 use riscv::register::scause::{self, Trap::{Interrupt, Exception}};
 use riscv::register::stvec;
 
+pub mod context;
+
 pub fn trap_init() {
     unsafe {
         // stvec寄存器设置为trap_handler
