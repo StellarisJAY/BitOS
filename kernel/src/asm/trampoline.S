@@ -1,5 +1,5 @@
 # this code is mapped in each memset's same virt page number
-.section .tramp
+.section .text.tramp
 # user ecall or exception triggers user_vec
 .global _user_vec
 _user_vec:

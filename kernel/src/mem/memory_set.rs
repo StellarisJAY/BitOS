@@ -4,7 +4,7 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use super::page_table::{PageTable, PageTableEntry};
 use bitflags::bitflags;
-use crate::config::{PAGE_SIZE};
+use crate::config::{PAGE_SIZE, TRAMPOLINE};
 
 bitflags! {
     pub struct MemPermission: usize {
@@ -78,6 +78,14 @@ impl MemorySet {
     pub fn insert_area(&mut self, mut area: MemoryArea, data: Option<&[u8]>) {
         area.map(&mut self.page_table, data);
         self.areas.push(area);
+    }
+    
+    pub fn map_trampoline(&mut self) {
+        extern "C" {
+            fn strampoline();
+        }
+        // 所在地址空间虚拟地址最高页，映射到trampoline代码的物理地址
+        self.page_table.map(VirtAddr(TRAMPOLINE).vpn(), PhysAddr(strampoline as usize).page_number(), MemPermission::R | MemPermission::X);
     }
 
     pub fn translate(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {

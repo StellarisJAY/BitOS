@@ -69,3 +69,9 @@ impl VirtAddr {
         return self.0 & ((1<<SV39_OFF_BITS) - 1);
     }
 }
+
+impl VirtPageNumber {
+    pub fn base_addr(&self) -> usize {
+        return self.0 << SV39_OFF_BITS;
+    }
+}

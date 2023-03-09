@@ -10,6 +10,9 @@ SECTIONS
     stext = .;
     .text : {
         *(.text.entry)    # entry段，kernel entry code
+        strampoline = .;
+        *(.text.tramp)    # trampoline 代码
+        . = ALIGN(4K);
         *(.text, .text.*) # text段
     }
     . = ALIGN(4K);

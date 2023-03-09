@@ -4,6 +4,7 @@ pub mod allocator;
 pub mod heap;
 pub mod memory_set;
 pub mod kernel;
+pub mod app;
 
 pub fn init() {
     heap::init();
