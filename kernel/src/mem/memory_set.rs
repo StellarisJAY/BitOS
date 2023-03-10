@@ -102,4 +102,8 @@ impl MemorySet {
     pub fn va_to_pa(&self, va: VirtAddr) -> Option<PhysAddr> {
         return self.page_table.va_to_pa(va);
     }
+
+    pub fn satp(&self) -> usize {
+        return self.page_table.satp(0);
+    }
 }

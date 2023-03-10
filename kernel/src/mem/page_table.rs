@@ -6,6 +6,8 @@ use alloc::vec;
 
 pub const SV39_PTE_PPN_BITS: usize = 44;
 pub const SV39_PTE_FLAG_BITS: usize = 10;
+const SV39_SATP_MODE: usize = 8;
+const SV39_SATP_ASID_BITS: usize = 16;
 
 //SV39 PTE，共64位，有效位54位
 #[derive(Clone, Copy)]
@@ -155,6 +157,11 @@ impl PageTable {
 
     pub fn translate(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {
         return self.find_pte(vpn);
+    }
+
+    // 获取SV39页表的satp值
+    pub fn satp(&self, asid: usize) -> usize {
+        return self.root_ppn.0 | (asid << SV39_PTE_PPN_BITS) | (SV39_SATP_MODE << (SV39_PTE_PPN_BITS + SV39_SATP_ASID_BITS));
     }
 }
 
