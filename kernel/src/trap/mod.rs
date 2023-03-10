@@ -1,5 +1,6 @@
 use riscv::register::scause::{self, Trap::{Interrupt, Exception}};
 use riscv::register::stvec;
+use context::TrapContext;
 
 pub mod context;
 
@@ -22,4 +23,17 @@ pub fn trap_handler() {
             panic!("exception, code: {}", cause.code());
         },
     }
+}
+
+#[no_mangle]
+pub fn user_trap_handler() {
+    
+}
+
+#[no_mangle]
+pub fn user_trap_return() {
+    extern "C" {
+        fn _user_ret(ctx: *const TrapContext, satp: usize);
+    }
+
 }
