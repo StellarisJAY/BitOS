@@ -8,6 +8,7 @@ pub const KERNEL_STACK_SIZE: usize = 8192;
 pub const TRAMPOLINE: usize = usize::MAX - PAGE_SIZE;
 // 守护页，在栈的底端加上一个不被页表映射的页，栈溢出时会触发Pagefault，方便捕获栈溢出异常
 pub const GUARD_PAGE: usize = PAGE_SIZE;
+pub const TRAP_CONTEXT: usize = TRAMPOLINE - PAGE_SIZE;
 // 用户进程的内核栈位置
 pub fn kernel_stack_position(pid: usize) -> (usize, usize) {
     let stack_top = TRAMPOLINE - pid * (KERNEL_HEAP_SIZE + GUARD_PAGE);

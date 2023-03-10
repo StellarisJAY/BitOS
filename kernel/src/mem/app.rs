@@ -39,6 +39,12 @@ impl MemorySet {
         ), None);
         // 映射Trampoline
         memset.map_trampoline();
+        // 映射TrapContext
+        memset.insert_area(MemoryArea::new(
+                VirtAddr(TRAP_CONTEXT).vpn(),
+                VirtAddr(TRAP_CONTEXT).vpn(),
+                MapMode::Indirect,
+                MemPermission::R.bits() | MemPermission::W.bits()), None);
         return memset;
     }
 }

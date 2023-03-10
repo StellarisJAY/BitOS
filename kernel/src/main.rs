@@ -18,6 +18,7 @@ mod proc;
 mod console;
 mod trap;
 mod mem;
+mod sync;
 
 global_asm!(include_str!("asm/entry.S"));
 
