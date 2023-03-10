@@ -16,6 +16,10 @@ extern "C" {
     fn sbss(); fn ebss();
 }
 
+pub fn kernel_satp() -> usize {
+    KERNEL_MEMSET.lock().satp()
+}
+
 impl MemorySet {
     // 初始化内核地址空间，将内核内存直接映射到页表
     pub fn init_kernel() {
