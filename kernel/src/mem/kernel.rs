@@ -20,6 +20,17 @@ pub fn kernel_satp() -> usize {
     KERNEL_MEMSET.lock().satp()
 }
 
+// 映射一个用户进程的内核栈
+pub fn map_kernel_stack(bottom: usize, top: usize) {
+    let mut memset = KERNEL_MEMSET.lock();
+    memset.insert_area(MemoryArea::new(
+            VirtAddr(bottom).vpn(),
+            VirtAddr(top).vpn(),
+            MapMode::Direct,
+            MemPermission::R.bits() | MemPermission::W.bits()), None);
+    drop(memset);
+}
+
 impl MemorySet {
     // 初始化内核地址空间，将内核内存直接映射到页表
     pub fn init_kernel() {
