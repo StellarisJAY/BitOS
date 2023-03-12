@@ -19,6 +19,7 @@ mod console;
 mod trap;
 mod mem;
 mod sync;
+mod syscall;
 
 global_asm!(include_str!("asm/entry.S"));
 

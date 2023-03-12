@@ -13,6 +13,14 @@ pub fn print_str(s: &str) {
     drop(uart);
 }
 
+pub fn print_buf(buf: &[u8]) {
+    let mut uart = UART.lock();
+    for b in buf.iter() {
+        uart.put(*b);
+    }
+    drop(uart);
+}
+
 pub fn print_banner() {
     let banner = "______ _________________________
 ___  /____(_)_  /__  __ \\_  ___/
