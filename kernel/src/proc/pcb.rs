@@ -76,6 +76,20 @@ impl ProcessControlBlock {
     pub fn user_satp(&self) -> usize {
         return self.inner.borrow().memory_set.satp();
     }
+    // 转换虚拟地址buffer到物理页集合
+    pub fn translate_buffer(&self, addr: usize, len: usize) -> Vec<&'static [u8]> {
+        let inner = self.inner.borrow();
+        let res = inner.memory_set.translate_buffer(addr, len);
+        drop(inner);
+        return res;
+    }
+    // 获取进程上下文的虚拟地址
+    pub fn context_addr(&self) -> usize {
+        let mut inner = self.inner.borrow();
+        let addr = &mut inner.context as *mut ProcessContext as usize;
+        drop(inner);
+        return addr;
+    }
 }
 
 
