@@ -90,6 +90,13 @@ impl ProcessControlBlock {
         drop(inner);
         return addr;
     }
+
+    pub fn trap_context(&self) -> *const TrapContext {
+        let inner = self.inner.borrow();
+        let ctx = inner.trap_context.base_addr() as usize as *const TrapContext;
+        drop(inner);
+        return ctx;
+    }
 }
 
 

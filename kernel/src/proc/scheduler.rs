@@ -7,6 +7,7 @@ use lazy_static::lazy_static;
 use super::loader::load_kernel_app;
 use spin::mutex::SpinMutex;
 use crate::config::CPUS;
+use crate::trap::context::TrapContext;
 
 // FIFO进程管理器
 pub struct ProcManager {
@@ -37,6 +38,18 @@ pub fn current_proc_translate_buffer(addr: usize, len: usize) -> Vec<&'static [u
     let cpuid = super::cpuid();
     let processor = PROCESSORS.get(cpuid).unwrap();
     return processor.current_proc().translate_buffer(addr, len);
+}
+
+pub fn current_proc_trap_context() -> *const TrapContext {
+    let cpuid = super::cpuid();
+    let processor = PROCESSORS.get(cpuid).unwrap();
+    return processor.current_proc().trap_context();
+}
+
+pub fn current_proc_satp() -> usize {
+    let cpuid = super::cpuid();
+    let processor = PROCESSORS.get(cpuid).unwrap();
+    return processor.current_proc().user_satp();
 }
 
 // 进程管理器添加进程
@@ -88,6 +101,16 @@ impl Processor {
 
     // 处理器调度下一个进程
     pub fn schedule(&mut self) {
-
+        // 如果没有可用进程，处理器在该循环空转
+        loop {
+            if let Some(pcb) = pop_process() {
+                self.current_proc = pcb;
+                let new_ctx = self.current_proc.context_addr() as *const ProcessContext;
+                let old_ctx = &mut self.idle_ctx as *mut ProcessContext;
+                unsafe {
+                    __switch(old_ctx, new_ctx);
+                }
+            }
+        }
     }
 }
