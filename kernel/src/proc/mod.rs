@@ -1,4 +1,4 @@
-use crate::register;
+use crate::arch::riscv::register;
 
 pub mod context;
 pub mod pcb;

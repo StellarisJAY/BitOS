@@ -1,8 +1,8 @@
 use spin::mutex::SpinMutex;
 use spin::lazy::Lazy;
 use core::fmt::*;
+use crate::arch::riscv::qemu::layout::UART0;
 
-const UART0: usize = 0x10000000;
 // uart 寄存器组，see：https://www.lammertbies.nl/comm/info/serial-uart
 const RHR: usize = 0; // 读缓冲（8bit）
 const THR: usize = 0; // 写缓冲
