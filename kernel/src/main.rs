@@ -1,6 +1,6 @@
 #![no_std]
 #![no_main]
-
+#![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
 #![allow(unused)]
 use core::arch::global_asm;
@@ -24,6 +24,8 @@ mod syscall;
 
 global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));
+global_asm!(include_str!("asm/trampoline.S"));
+global_asm!(include_str!("asm/switch.S"));
 
 // 引导内核启动，设置M模式下的寄存器，之后跳转到内核入口进入S模式
 #[no_mangle]
@@ -66,7 +68,7 @@ unsafe fn timer_init() {
     // scratch[0..=2] 用于保存寄存器
     // scratch[3] : CLINT MTIMECMP地址
     // scratch[4] : 时钟中断间隔
-    TIMER_SCRATCH[id][3] = mtie_cmp_addr(id);
+    TIMER_SCRATCH[id][3] = mtime_cmp_addr(id);
     TIMER_SCRATCH[id][4] = interval;
 
     // mscratch寄存器记录scratch数组地址
@@ -88,7 +90,7 @@ use core::sync::atomic::Ordering;
 static KERNEL_INITED: AtomicU8 = AtomicU8::new(0);
 
 #[no_mangle]
-pub fn rust_main() {
+pub unsafe fn rust_main() {
     let id = cpuid();
     if id == 0 {
         // cpu0 init kernel
@@ -96,12 +98,13 @@ pub fn rust_main() {
         console::print_banner();
         kernel!("drivers initialized");
         mem::init();
+        trap::trap_init();
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
     }else {
         while KERNEL_INITED.load(Ordering::SeqCst) == 0 {}
     }
-    // schedule proc
+    proc::scheduler::schedule();
 }
 
 #[panic_handler]

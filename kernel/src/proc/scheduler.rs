@@ -8,6 +8,7 @@ use super::loader::load_kernel_app;
 use spin::mutex::SpinMutex;
 use crate::config::CPUS;
 use crate::trap::context::TrapContext;
+use crate::sync::cell::SafeCell;
 
 // FIFO进程管理器
 pub struct ProcManager {
@@ -30,26 +31,32 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref PROCESSORS: Vec<Arc<Processor>> = Vec::new();
+    pub static ref PROCESSORS: Vec<SafeCell<Processor>> = Vec::new();
+}
+
+pub fn schedule() {
+    let cpuid = super::cpuid();
+    let processor = PROCESSORS.get(cpuid).unwrap();
+    processor.borrow().schedule();
 }
 
 // 在当前进程地址空间，转换一个虚拟地址buf
 pub fn current_proc_translate_buffer(addr: usize, len: usize) -> Vec<&'static [u8]> {
     let cpuid = super::cpuid();
     let processor = PROCESSORS.get(cpuid).unwrap();
-    return processor.current_proc().translate_buffer(addr, len);
+    return processor.borrow().current_proc().translate_buffer(addr, len);
 }
 
 pub fn current_proc_trap_context() -> *const TrapContext {
     let cpuid = super::cpuid();
     let processor = PROCESSORS.get(cpuid).unwrap();
-    return processor.current_proc().trap_context();
+    return processor.borrow().current_proc().trap_context();
 }
 
 pub fn current_proc_satp() -> usize {
     let cpuid = super::cpuid();
     let processor = PROCESSORS.get(cpuid).unwrap();
-    return processor.current_proc().user_satp();
+    return processor.borrow().current_proc().user_satp();
 }
 
 // 进程管理器添加进程
