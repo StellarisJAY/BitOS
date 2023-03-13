@@ -24,8 +24,12 @@ pub unsafe fn read_tp() -> usize {
 }
 
 #[inline]
-unsafe fn read_mtime() -> usize {
+pub unsafe fn read_mtime() -> usize {
     ptr::read_volatile(CLINT_MTIME as *const usize)
+}
+
+pub unsafe fn read_mtimecmp(mhartid:usize) -> usize {
+    ptr::read_volatile((CLINT_MTIMECMP + 8*mhartid) as *const usize)
 }
 
 unsafe fn write_mtimecmp(mhartid:usize, value: usize) {
@@ -35,9 +39,10 @@ unsafe fn write_mtimecmp(mhartid:usize, value: usize) {
 
 pub unsafe fn add_mtimecmp(mhartid:usize, interval:usize){
     let value = read_mtime();
+    // 下一个中断的时间：当前time+间隔
     write_mtimecmp(mhartid, value+interval);
 }
 
-pub fn mtie_cmp_addr(mhartid:usize) -> usize{
-    return CLINT0 + 8*mhartid + 0x4000;
+pub fn mtime_cmp_addr(mhartid:usize) -> usize{
+    return CLINT_MTIMECMP + 8*mhartid;
 }
