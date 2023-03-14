@@ -8,6 +8,7 @@ use crate::mem::address::*;
 use crate::config::*;
 use alloc::vec::Vec;
 use crate::sync::cell::SafeCell;
+use core::cell::RefMut;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ProcessState {
@@ -24,21 +25,22 @@ pub struct ProcessControlBlock {
 }
 
 pub struct InnerPCB {
-    mem_size: usize,
-    kernel_stack: usize,                          // 内核栈地址
-    context: ProcessContext,                      // 进程上下文
-    trap_context: PhysPageNumber,                 // 陷入上下文
-    memory_set: MemorySet,                        // 内存集合
-    parent: Option<Arc<ProcessControlBlock>>,     // 父进程pcb
-    children: Vec<Arc<ProcessControlBlock>>,      // 子进程pcb集合
-    status: ProcessState,
-    exit_code: i32,
+    pub mem_size: usize,
+    pub kernel_stack: usize,                          // 内核栈地址
+    pub context: ProcessContext,                      // 进程上下文
+    pub trap_context: PhysPageNumber,                 // 陷入上下文
+    pub memory_set: MemorySet,                        // 内存集合
+    pub parent: Option<Arc<ProcessControlBlock>>,     // 父进程pcb
+    pub children: Vec<Arc<ProcessControlBlock>>,      // 子进程pcb集合
+    pub status: ProcessState,
+    pub exit_code: i32,
 }
 
 impl InnerPCB {
     pub fn get_trap_context(&mut self) -> &mut TrapContext {
         unsafe {
             let ptr = self.trap_context.base_addr() as *mut TrapContext;
+            debug!("trap_ctx base addr: {}", self.trap_context.base_addr());
             ptr.as_mut().unwrap()
         }
     }
@@ -56,6 +58,7 @@ impl ProcessControlBlock {
         crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
 
         let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
+        debug!("trap ctx vpn: {}", VirtAddr(TRAP_CONTEXT).vpn().0);
         let mut inner = InnerPCB {
             mem_size: data.len(),
             kernel_stack: stack_top,
@@ -91,11 +94,21 @@ impl ProcessControlBlock {
         return addr;
     }
 
-    pub fn trap_context(&self) -> *const TrapContext {
-        let inner = self.inner.borrow();
-        let ctx = inner.trap_context.base_addr() as usize as *const TrapContext;
-        drop(inner);
-        return ctx;
+    pub fn trap_context(&self) -> &'static mut TrapContext {
+        unsafe {
+            let inner = self.inner.borrow();
+            let ctx = inner.trap_context.base_addr() as usize as *mut TrapContext;
+            drop(inner);
+            return ctx.as_mut().unwrap();
+        }
+    }
+
+    pub fn trap_context_addr(&self) -> usize {
+        return self.inner.borrow().trap_context.base_addr();
+    }
+
+    pub fn borrow_inner(&self) -> RefMut<'_, InnerPCB> {
+        self.inner.borrow()
     }
 }
 
