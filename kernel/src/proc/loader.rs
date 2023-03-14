@@ -11,7 +11,7 @@ lazy_static! {
         let count = get_app_count();
         let mut ptr = _app_names as usize as *mut u8;
         let mut names: Vec<&'static str> = Vec::new();
-        for i in 0..count-1 {
+        for i in 0..count {
             let mut p = ptr;
             let mut length: usize = 0;
             while p.read_volatile() != b'\0' {
