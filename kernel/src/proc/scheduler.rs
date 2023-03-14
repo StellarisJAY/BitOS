@@ -32,7 +32,13 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref PROCESSORS: Vec<SafeCell<Processor>> = Vec::new();
+    pub static ref PROCESSORS: Vec<SafeCell<Processor>> = {
+        let mut v: Vec<SafeCell<Processor>> = Vec::new();
+        for i in 0..CPUS {
+            v.push(SafeCell::new(Processor::new()));
+        }
+        return v;
+    };
 }
 
 pub fn schedule() {
@@ -116,6 +122,10 @@ extern "C" {
 }
 
 impl Processor {
+    pub fn new() -> Self {
+        Self { idle_ctx: ProcessContext::empty(), current_proc: None }
+    }
+
     fn current_proc(&mut self) -> Option<Arc<ProcessControlBlock>> {
         return self.current_proc.take();
     }

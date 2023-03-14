@@ -11,21 +11,23 @@ use config::CPUS;
 use arch::riscv::register::*;
 extern crate alloc;
 
-mod arch;
-mod config;
-mod driver;
-mod proc;
+
 #[macro_use]
 mod console;
 mod trap;
 mod mem;
 mod sync;
 mod syscall;
+mod arch;
+mod config;
+mod driver;
+mod proc;
 
 global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));
 global_asm!(include_str!("asm/trampoline.S"));
 global_asm!(include_str!("asm/switch.S"));
+global_asm!(include_str!("asm/link_kernel_app.S"));
 
 // 引导内核启动，设置M模式下的寄存器，之后跳转到内核入口进入S模式
 #[no_mangle]
@@ -99,6 +101,7 @@ pub unsafe fn rust_main() {
         kernel!("drivers initialized");
         mem::init();
         trap::trap_init();
+        proc::init_processors();
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
     }else {
@@ -112,7 +115,7 @@ fn panic_handler(info: &core::panic::PanicInfo) -> !{
     match info.location() {
         Some(loc) => {
             if let Some(msg) = info.message() {
-                error!("kernel panicked at {}:{}, message: {}",loc.file(), loc.line(), msg.as_str().unwrap());
+                error!("kernel panicked at {}:{}, message: {}",loc.file(), loc.line(), msg.as_str().unwrap_or("no message"));
             }else {
                 error!("kernel panicked at {}:{}",loc.file(), loc.line());
             }
