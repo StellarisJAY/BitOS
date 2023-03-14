@@ -53,7 +53,7 @@ impl MemoryArea {
                 // 拷贝数据到当前的物理页
                 if let Some(bytes) = data {
                     let limit = (offset + PAGE_SIZE).min(bytes.len());
-                    frame.ppn.as_bytes().copy_from_slice(&bytes[offset..limit]);
+                    frame.ppn.as_bytes()[0..(limit - offset)].copy_from_slice(&bytes[offset..limit]);
                     offset = limit;
                 }
                 self.frames.insert(VirtPageNumber(vpn), frame);

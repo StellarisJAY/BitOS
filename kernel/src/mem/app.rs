@@ -4,7 +4,7 @@ use elf::ElfBytes;
 use elf::endian::AnyEndian;
 use crate::config::*;
 
-const PT_LOAD: u32 = 0;
+const PT_LOAD: u32 = 1;
 
 impl MemorySet {
     // 从app的elf文件创建内存集合
@@ -18,7 +18,7 @@ impl MemorySet {
             if seg.p_type == PT_LOAD {
                 // vpn range
                 let start_va = VirtAddr(seg.p_vaddr as usize);
-                let end_va = VirtAddr(seg.p_vaddr as usize + seg.p_filesz as usize);
+                let end_va = VirtAddr(seg.p_vaddr as usize + seg.p_filesz as usize + PAGE_SIZE);
                 memset.insert_area(MemoryArea::new(
                         start_va.vpn(),
                         end_va.vpn(),
@@ -42,7 +42,7 @@ impl MemorySet {
         // 映射TrapContext
         memset.insert_area(MemoryArea::new(
                 VirtAddr(TRAP_CONTEXT).vpn(),
-                VirtAddr(TRAP_CONTEXT).vpn(),
+                VirtAddr(TRAP_CONTEXT + PAGE_SIZE).vpn(),
                 MapMode::Indirect,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
         return memset;
