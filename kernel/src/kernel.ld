@@ -35,8 +35,8 @@ SECTIONS
         *(.bss, .bss.*) # bss段
         *(.sbss, .sbss.*)
     }
-    ebss = .;
     . = ALIGN(4K);
+    ebss = .;
     # kernel 内存结束位置
     ekernel = .;
     /DISCARD/ : {
