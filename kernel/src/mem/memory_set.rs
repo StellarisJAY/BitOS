@@ -107,6 +107,14 @@ impl MemorySet {
         return self.page_table.satp(0);
     }
 
+    pub fn reset_satp(&self) {
+        let satp = self.satp();
+        unsafe {
+            core::arch::asm!("csrw satp, {}", in(reg) satp);
+            core::arch::asm!("sfence.vma zero, zero");
+        }
+    }
+
     // 虚拟地址的连续buffer，转换成物理页的切片集合
     pub fn translate_buffer(&self, addr: usize, len: usize) -> Vec<&'static [u8]> {
         let (start_va, end_va) = (VirtAddr(addr), VirtAddr(addr + len));
