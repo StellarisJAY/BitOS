@@ -84,13 +84,6 @@ impl MemorySet {
                 MapMode::Direct,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
         debug!(".bss section mapped, vpn range: [{}, {})", VirtAddr(sbss as usize).vpn().0, VirtAddr(ebss as usize).vpn().0);
-        // 物理内存区域
-        memory_set.insert_area(MemoryArea::new(
-                VirtAddr(ekernel as usize).vpn(),
-                VirtAddr(TRAMPOLINE as usize).vpn(),
-                MapMode::Direct,
-                MemPermission::R.bits() | MemPermission::W.bits()), None);
-        debug!("physical memory mapped, size: {}MiB", (MAX_VA - ekernel as usize) >> 20);
         drop(memory_set);
     }
 }

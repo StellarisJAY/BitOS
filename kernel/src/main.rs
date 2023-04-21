@@ -102,6 +102,8 @@ pub unsafe fn rust_main() {
         trap::trap_init();
         mem::init();
         proc::init_processors();
+        mem::kernel::switch_to_kernel_space();
+        kernel!("kernel memory mapped and initialized, switched to kernel mem space");
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
     }else {
