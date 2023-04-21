@@ -99,8 +99,8 @@ pub unsafe fn rust_main() {
         driver::init();
         console::print_banner();
         kernel!("drivers initialized");
-        mem::init();
         trap::trap_init();
+        mem::init();
         proc::init_processors();
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
