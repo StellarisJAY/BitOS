@@ -4,8 +4,8 @@ use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
 use alloc::vec;
 use crate::config::{MAX_VA, PAGE_SIZE, TRAMPOLINE};
+use crate::arch::riscv::qemu::layout::UART0;
 use crate::driver::uart::put_char;
-use super::heap::HEAP;
 use super::page_table::PageTable;
 
 // 内核内存集合
@@ -31,9 +31,6 @@ pub fn switch_to_kernel_space() {
     unsafe {
         core::arch::asm!("csrw satp, {}", in(reg) satp);
         core::arch::asm!("sfence.vma");
-        core::arch::asm!("nop");
-        put_char('a' as u8);
-        kernel!("satp set");
     }
 }
 
@@ -53,41 +50,47 @@ impl MemorySet {
     pub fn init_kernel() {
         let mut memory_set = KERNEL_MEMSET.lock();
         memory_set.map_trampoline();
+        // 映射低地址的mmio区域
+        memory_set.insert_area(MemoryArea::new(
+            VirtAddr(UART0).vpn(),
+            VirtAddr(stext as usize).vpn(),
+            MapMode::Direct,
+            MemPermission::R.bits() | MemPermission::W.bits()), None);
         // 内核.text段，R|X
         memory_set.insert_area(MemoryArea::new(
                 VirtAddr(stext as usize).vpn(),
                 VirtAddr(etext as usize).vpn(),
                 MapMode::Direct,
                 MemPermission::X.bits() | MemPermission::R.bits()), None);
-        kernel!(".text section mapped, range: [{}, {})", VirtAddr(stext as usize).vpn().0, VirtAddr(etext as usize).vpn().0);
+        debug!(".text section mapped, vpn range: [{}, {})", VirtAddr(stext as usize).vpn().0, VirtAddr(etext as usize).vpn().0);
         // 内核.rodata段，只读
         memory_set.insert_area(MemoryArea::new(
                 VirtAddr(srodata as usize).vpn(),
                 VirtAddr(erodata as usize).vpn(),
                 MapMode::Direct,
                 MemPermission::R.bits()), None);
-        kernel!(".rodata section mapped, range: [{}, {})", VirtAddr(srodata as usize).vpn().0, VirtAddr(erodata as usize).vpn().0);
+        debug!(".rodata section mapped, vpn range: [{}, {})", VirtAddr(srodata as usize).vpn().0, VirtAddr(erodata as usize).vpn().0);
         // 内核.data段，可读可写
         memory_set.insert_area(MemoryArea::new(
                 VirtAddr(sdata as usize).vpn(),
                 VirtAddr(edata as usize).vpn(),
                 MapMode::Direct,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
-        kernel!(".data section mapped, range: [{}, {})", VirtAddr(sdata as usize).vpn().0, VirtAddr(edata as usize).vpn().0);
+        debug!(".data section mapped, vpn range: [{}, {})", VirtAddr(sdata as usize).vpn().0, VirtAddr(edata as usize).vpn().0);
         // 内核.bss段，可读可写
         memory_set.insert_area(MemoryArea::new(
                 VirtAddr(sbss as usize).vpn(),
                 VirtAddr(ebss as usize).vpn(),
                 MapMode::Direct,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
-        kernel!(".bss section mapped, range: [{}, {})", VirtAddr(sbss as usize).vpn().0, VirtAddr(ebss as usize).vpn().0);
+        debug!(".bss section mapped, vpn range: [{}, {})", VirtAddr(sbss as usize).vpn().0, VirtAddr(ebss as usize).vpn().0);
         // 物理内存区域
         memory_set.insert_area(MemoryArea::new(
                 VirtAddr(ekernel as usize).vpn(),
                 VirtAddr(TRAMPOLINE as usize).vpn(),
                 MapMode::Direct,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
-        kernel!("physical memory mapped, size: {}MiB", (MAX_VA - ekernel as usize) >> 20);
+        debug!("physical memory mapped, size: {}MiB", (MAX_VA - ekernel as usize) >> 20);
         drop(memory_set);
     }
 }
@@ -102,14 +105,14 @@ pub fn kernel_map_test() {
         let in_data = (sdata as usize + edata as usize) / 2;
         let in_bss = (sbss as usize + ebss as usize) / 2;
         let in_phys = ekernel as usize + 1024;
-        let in_heap = HEAP.as_ptr() as usize;
-        let cases = vec![in_rodata, in_text, in_data, in_bss, in_phys, in_heap];
-        let writable = vec![false, false, true, true, true, true];
-        let executable = vec![false, true, false, false, false, false];
+        let cases = vec![in_rodata, in_text, in_data, in_bss, in_phys];
+        let writable = vec![false, false, true, true, true];
+        let executable = vec![false, true, false, false, false];
 
         for (i, case) in cases.iter().enumerate() {
             let vpn = VirtAddr(*case).vpn();
             let pte = pagetable.translate(vpn).unwrap();
+            assert!(pte.is_valid(), "should be valid");
             assert!(pte.is_readalbe(), "should be readable");
             assert!(pte.is_writable() == writable[i], "writable failed");
             assert!(pte.is_executable() == executable[i], "executable failed");
@@ -118,6 +121,4 @@ pub fn kernel_map_test() {
         }
         kernel!("kernel memory map test passed!");
     }
-
-
 }
