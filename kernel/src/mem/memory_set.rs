@@ -134,3 +134,10 @@ impl MemorySet {
         return buffers;
     }
 }
+
+// 在debug监控MemoryArea的所有权丢失
+impl Drop for MemoryArea {
+    fn drop(&mut self) {
+        debug!("memory area {}, {} dropped", self.start_vpn.0, self.end_vpn.0);
+    }
+}

@@ -12,8 +12,6 @@ pub fn init() {
     allocator::init();
     kernel!("phys frame allocator initialized");
     memory_set::MemorySet::init_kernel();
-    kernel::kernel_map_test();
-    kernel!("switching to kernel space");
     kernel::switch_to_kernel_space();
     kernel!("kernel memory mapped and initialized");
 }
