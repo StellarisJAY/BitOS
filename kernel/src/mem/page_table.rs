@@ -76,6 +76,10 @@ impl PageTable {
         return Self{root_ppn: frame.ppn, frames: vec![frame]};
     }
 
+    pub fn from_satp(satp: usize) -> Self {
+        return Self{root_ppn: PhysPageNumber(satp_ppn(satp)), frames: Vec::new()};
+    }
+
     // 将虚拟页映射到物理页
     pub fn map(&mut self, vpn: VirtPageNumber, ppn: PhysPageNumber, flags: usize) {
         let levels = divide_vpn(vpn);
@@ -87,6 +91,7 @@ impl PageTable {
             if level == levels.len() - 1 {
                 // 该pte已经映射到某一个ppn，panic
                 if pte.is_valid() {
+                    error!("vpn {} already mapped", vpn.0);
                     panic!("vpn {} already mapped", vpn.0);
                 }else {
                     // 将ppn写入叶子节点的pte
@@ -163,6 +168,10 @@ impl PageTable {
     pub fn satp(&self, asid: usize) -> usize {
         return self.root_ppn.0 | (asid << SV39_PTE_PPN_BITS) | (SV39_SATP_MODE << (SV39_PTE_PPN_BITS + SV39_SATP_ASID_BITS));
     }
+}
+
+fn satp_ppn(satp: usize) -> usize {
+    return satp & ((1<<SV39_PTE_PPN_BITS) - 1);
 }
 
 // 将SV39的27位vpn分割成3个9bits的多级vpn
