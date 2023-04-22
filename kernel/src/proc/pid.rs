@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use spin::mutex::SpinMutex;
 use lazy_static::lazy_static;
-
+use crate::config::MAX_PID;
 pub struct Pid(pub usize);
 
 pub struct PidAllocator {
@@ -11,7 +11,7 @@ pub struct PidAllocator {
 }
 
 lazy_static! {
-    pub static ref PID_ALLOCATOR: SpinMutex<PidAllocator> = SpinMutex::new(PidAllocator::new(1, 4096));
+    pub static ref PID_ALLOCATOR: SpinMutex<PidAllocator> = SpinMutex::new(PidAllocator::new(0, MAX_PID));
 }
 
 pub fn alloc_pid() -> Option<Pid> {
