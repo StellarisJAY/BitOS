@@ -56,13 +56,12 @@ impl ProcessControlBlock {
         // 映射内核栈
         let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
         crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
-
+        
         let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
-        debug!("trap ctx vpn: {}", VirtAddr(TRAP_CONTEXT).vpn().0);
         let mut inner = InnerPCB {
             mem_size: data.len(),
             kernel_stack: stack_top,
-            context: ProcessContext::switch_ret_context(), // 空的进程上下文，ra指向user_trap_return，使进程被调度后能够回到U模式
+            context: ProcessContext::switch_ret_context(stack_top), // 空的进程上下文，ra指向user_trap_return，使进程被调度后能够回到U模式
             trap_context: trap_context_ppn,
             memory_set: memset,
             parent: None,
@@ -109,6 +108,10 @@ impl ProcessControlBlock {
 
     pub fn borrow_inner(&self) -> RefMut<'_, InnerPCB> {
         self.inner.borrow()
+    }
+
+    pub fn pid(&self) -> usize {
+        return self.pid.0;
     }
 }
 

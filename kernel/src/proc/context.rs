@@ -13,10 +13,10 @@ impl ProcessContext {
         return Self { ra: 0, sp: 0, s: [0;12] };
     }
 
-    pub fn switch_ret_context() -> Self {
+    pub fn switch_ret_context(kernel_stack: usize) -> Self {
         return Self {
             ra: user_trap_return as usize,
-            sp: 0,
+            sp: kernel_stack,
             s: [0; 12],
         }
     }
