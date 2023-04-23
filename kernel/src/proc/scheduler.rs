@@ -41,9 +41,22 @@ lazy_static! {
     };
 }
 
+// 处理器调度循环
 pub fn schedule() {
     let processor = PROCESSORS.get(cpuid()).unwrap();
-    processor.borrow().schedule();
+    // 如果没有可用进程，处理器在该循环空转
+    loop {
+        let mut p = processor.borrow();
+        if let Some(pcb) = pop_process() {
+            let new_ctx = pcb.context_addr() as *const ProcessContext;
+            let old_ctx = p.idle_context_ptr();
+            p.current_proc = Some(pcb);
+            drop(p);
+            unsafe {
+                __switch(old_ctx, new_ctx);
+            }
+        }
+    }
 }
 
 pub fn schedule_idle() {
@@ -126,8 +139,11 @@ impl Processor {
         Self { idle_ctx: ProcessContext::empty(), current_proc: None }
     }
 
-    fn current_proc(&mut self) -> Option<Arc<ProcessControlBlock>> {
-        return self.current_proc.take();
+    fn current_proc(&self) -> Option<Arc<ProcessControlBlock>> {
+        match &self.current_proc {
+            Some(proc) => return Some(Arc::clone(&proc)),
+            None=>None
+        }
     }
     // 处理器进入idle状态
     pub fn schedule_idle(&mut self) {
@@ -143,19 +159,9 @@ impl Processor {
         // 当前进程进入FIFO队列
         push_process(current_proc);
     }
-
-    // 处理器调度下一个进程
-    pub fn schedule(&mut self) {
-        // 如果没有可用进程，处理器在该循环空转
-        loop {
-            if let Some(pcb) = pop_process() {
-                let new_ctx = pcb.context_addr() as *const ProcessContext;
-                let old_ctx = &mut self.idle_ctx as *mut ProcessContext;
-                self.current_proc = Some(pcb);
-                unsafe {
-                    __switch(old_ctx, new_ctx);
-                }
-            }
-        }
+    // 获取idle进程的ctx
+    pub fn idle_context_ptr(&mut self) -> *mut ProcessContext {
+        let ctx = &mut self.idle_ctx;
+        return ctx as *mut ProcessContext;
     }
 }
