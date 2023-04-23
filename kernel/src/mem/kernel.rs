@@ -3,7 +3,7 @@ use super::memory_set::{MapMode, MemPermission, MemoryArea, MemorySet};
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
 use alloc::vec;
-use crate::config::{MAX_VA, PAGE_SIZE, TRAMPOLINE};
+use crate::config::{MAX_VA, PAGE_SIZE, TRAMPOLINE, KERNEL_STACK_BOTTOM, PHYS_MEM_LIMIT};
 use crate::arch::riscv::qemu::layout::UART0;
 use crate::driver::uart::put_char;
 use super::page_table::PageTable;
@@ -40,9 +40,17 @@ pub fn map_kernel_stack(bottom: usize, top: usize) {
     memset.insert_area(MemoryArea::new(
             VirtAddr(bottom).vpn(),
             VirtAddr(top).vpn(),
-            MapMode::Direct,
+            MapMode::Indirect,         // 内核栈在高地址空间，已经超出物理地址范围，使用间接映射
             MemPermission::R.bits() | MemPermission::W.bits()), None);
     drop(memset);
+}
+
+#[allow(unused)]
+pub fn kernel_memset_translate(vpn: VirtPageNumber) -> Option<PhysPageNumber> {
+    let memset = KERNEL_MEMSET.lock();
+    let ppn = memset.vpn_to_ppn(vpn);
+    drop(memset);
+    return ppn;
 }
 
 impl MemorySet {
@@ -84,7 +92,12 @@ impl MemorySet {
                 MapMode::Direct,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
         debug!(".bss section mapped, vpn range: [{}, {})", VirtAddr(sbss as usize).vpn().0, VirtAddr(ebss as usize).vpn().0);
-        drop(memory_set);
+        // 映射内核段到栈之间的物理内存区域
+        memory_set.insert_area(MemoryArea::new(
+            VirtAddr(ekernel as usize).vpn(),
+            VirtAddr(PHYS_MEM_LIMIT as usize).vpn(),
+            MapMode::Direct,
+            MemPermission::R.bits() | MemPermission::W.bits()), None);
     }
 }
 

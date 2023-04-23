@@ -1,5 +1,5 @@
 pub const CPUS: usize = 1;
-pub const PHYS_MEM_LIMIT: usize = 4<<30;
+pub const PHYS_MEM_LIMIT: usize = 2 << 30;
 pub const KERNEL_HEAP_SIZE: usize = 0x00100000;
 pub const PAGE_SIZE: usize = 4096;
 
