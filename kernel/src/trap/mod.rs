@@ -73,6 +73,8 @@ pub fn user_trap_return() {
     let satp = current_proc_satp();
     let trap_context = current_proc_trap_addr() as *const TrapContext;
     unsafe {
+        // 设置陷入为用户模式
+        stvec::write(_user_vec as usize, stvec::TrapMode::Direct);
         _user_ret(trap_context, satp);
     }
 }
