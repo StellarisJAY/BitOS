@@ -1,5 +1,5 @@
 use riscv::register::scause::{self, Trap::{Interrupt, Exception}};
-use riscv::register::{stvec, sepc};
+use riscv::register::{stvec, sepc, sstatus};
 use riscv::register::scause::Interrupt::*;
 use riscv::register::scause::Exception::*;
 use context::TrapContext;
@@ -73,8 +73,10 @@ pub fn user_trap_return() {
     let satp = current_proc_satp();
     let trap_context = current_proc_trap_addr() as *const TrapContext;
     unsafe {
-        // 设置陷入为用户模式
+        // 设置User模式trap处理器
         stvec::write(_user_vec as usize, stvec::TrapMode::Direct);
+        // 切换回User模式
+        sstatus::set_spp(sstatus::SPP::User);
         _user_ret(trap_context, satp);
     }
 }

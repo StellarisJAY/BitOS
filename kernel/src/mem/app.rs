@@ -6,9 +6,15 @@ use crate::config::*;
 
 const PT_LOAD: u32 = 1;
 
+// 应用程序虚拟地址空间布局：
+//
+// | .text | .data | heap ... stack | trap_ctx | trampoline |
+// heap大小固定，stack从高地址逆向增长
+// trap虚拟地址固定，U切换S时保存寄存器
+// trampoline在虚拟页最高页，映射到.trampoline代码段
 impl MemorySet {
     // 从app的elf文件创建内存集合
-    pub fn from_elf_data(data: &[u8]) -> Self {
+    pub fn from_elf_data(data: &[u8]) -> (Self, usize, usize) {
         let mut memset = Self::new();
         let elf = ElfBytes::<AnyEndian>::minimal_parse(data).unwrap();
         // 映射elf segments
@@ -45,6 +51,6 @@ impl MemorySet {
                 VirtAddr(TRAP_CONTEXT + PAGE_SIZE).vpn(),
                 MapMode::Indirect,
                 MemPermission::R.bits() | MemPermission::W.bits()), None);
-        return memset;
+        return (memset, elf.ehdr.e_entry as usize, stack_top_vpn.base_addr());
     }
 }

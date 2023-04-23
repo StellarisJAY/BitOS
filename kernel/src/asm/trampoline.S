@@ -69,7 +69,10 @@ _user_ret:
     # save user's a0 in sscratch temporarily
     ld t0, 104(a0)
     csrw sscratch, t0
-
+    # set sepc to user program's pc
+    ld t0, 24(a0)
+    csrw sepc, t0
+    
     # load t0..t6
     ld t0, 48(a0)
     ld t1, 56(a0)

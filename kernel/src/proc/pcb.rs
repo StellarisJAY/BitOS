@@ -51,7 +51,7 @@ impl ProcessControlBlock {
     pub fn from_elf_data(data: &[u8]) -> Self {
         let pid = alloc_pid().unwrap();
         // 从elf数据创建用户地址空间
-        let memset = MemorySet::from_elf_data(data);
+        let (memset, entry_point, user_stack_sp) = MemorySet::from_elf_data(data);
         let kernel_satp = crate::mem::kernel::kernel_satp();
         // 映射内核栈
         let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
@@ -71,7 +71,7 @@ impl ProcessControlBlock {
         };
         // 创建trap ctx
         let trap_ctx = inner.get_trap_context();
-        (*trap_ctx) = TrapContext::user_trap_context(kernel_satp, stack_top, user_trap_handler as usize);
+        (*trap_ctx) = TrapContext::user_trap_context(kernel_satp, stack_top, user_trap_handler as usize, entry_point, user_stack_sp);
         return Self { pid: pid, inner: SafeCell::new(inner) }
     }
 
