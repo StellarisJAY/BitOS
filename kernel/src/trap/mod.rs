@@ -5,7 +5,7 @@ use riscv::register::scause::Exception::*;
 use context::TrapContext;
 use crate::proc::scheduler::{current_proc_trap_context, current_proc_satp, current_proc_trap_addr};
 use crate::syscall::handle_syscall;
-use crate::config::TRAMPOLINE;
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use core::arch::asm;
 
 pub mod context;
@@ -71,12 +71,18 @@ pub fn user_trap_return() {
     }
     let user_ret_va = _user_ret as usize - _user_vec as usize + TRAMPOLINE;
     let satp = current_proc_satp();
-    let trap_context = current_proc_trap_addr() as *const TrapContext;
+    let trap_context = TRAP_CONTEXT;
     unsafe {
         // 设置User模式trap处理器
         stvec::write(_user_vec as usize, stvec::TrapMode::Direct);
         // 切换回User模式
         sstatus::set_spp(sstatus::SPP::User);
-        _user_ret(trap_context, satp);
+        // 使用jr指令直接跳转到地址
+        asm!("jr {user_ret_va}",
+            user_ret_va = in(reg) user_ret_va,
+            in("a0") trap_context, // a0 为TRAP_CONTEXT的固定虚拟地址
+            in("a1") satp,   // a1 寄存器写入用户地址空间的satp，即用户地址空间的页表ppn
+            options(noreturn)
+        );
     }
 }
