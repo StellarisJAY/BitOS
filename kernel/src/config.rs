@@ -1,5 +1,5 @@
 pub const CPUS: usize = 1;
-pub const PHYS_MEM_LIMIT: usize = 2 << 30;
+pub const PHYS_MEM_LIMIT: usize = 0x88000000; // 内存大小=2GB
 pub const KERNEL_HEAP_SIZE: usize = 0x00100000;
 pub const PAGE_SIZE: usize = 4096;
 
@@ -15,7 +15,7 @@ pub const GUARD_PAGE: usize = PAGE_SIZE;
 pub const TRAP_CONTEXT: usize = TRAMPOLINE - PAGE_SIZE;
 
 // 最大pid值
-pub const MAX_PID: usize = 2<<15;
+pub const MAX_PID: usize = 1<<15;
 // 内核栈区域底部地址
 pub const KERNEL_STACK_BOTTOM: usize = TRAMPOLINE - MAX_PID * (KERNEL_STACK_SIZE + GUARD_PAGE);
 
@@ -23,5 +23,11 @@ pub const KERNEL_STACK_BOTTOM: usize = TRAMPOLINE - MAX_PID * (KERNEL_STACK_SIZE
 pub fn kernel_stack_position(pid: usize) -> (usize, usize) {
     let stack_top = TRAMPOLINE - pid * (KERNEL_STACK_SIZE + GUARD_PAGE);
     let stack_bottom = stack_top - KERNEL_STACK_SIZE;
+    return (stack_bottom, stack_top);
+}
+
+pub fn user_stack_position() -> (usize, usize) {
+    let stack_top = TRAP_CONTEXT;
+    let stack_bottom = stack_top - USER_STACK_SIZE;
     return (stack_bottom, stack_top);
 }
