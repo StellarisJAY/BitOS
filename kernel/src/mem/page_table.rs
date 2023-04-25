@@ -67,6 +67,10 @@ impl PageTableEntry {
     pub fn is_executable(&self) -> bool {
         return PteFlags::X.bits & self.bits != 0;
     }
+
+    pub fn is_usermode(&self) -> bool {
+        return PteFlags::U.bits & self.bits != 0;
+    }
 }
 
 impl PageTable {
