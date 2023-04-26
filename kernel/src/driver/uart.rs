@@ -80,10 +80,10 @@ impl Uart {
     pub fn get(&self) -> Option<u8> {
         let ptr = reg_addr(RHR) as *mut u8;
         // 判断RHR是否有数据
-        if read_reg(LSR) & 1 == 0 {
-            return None;
-        }else{
+        if read_reg(LSR) & 1 != 0 {
             unsafe {return Some(ptr.read_volatile());}
+        }else{
+            return None;
         }
     }
 }
