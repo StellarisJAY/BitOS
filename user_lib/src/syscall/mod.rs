@@ -1,6 +1,7 @@
 use core::arch::asm;
 
 const SYSCALL_EXIT: usize = 93;
+const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 
 // ecall 系统调用
@@ -22,5 +23,9 @@ pub fn exit(code: i32) {
 
 pub fn write(fd: usize, buf: &[u8]) -> isize {
     ecall(SYSCALL_WRITE, [fd, buf.as_ptr() as usize, buf.len()])
+}
+
+pub fn read(fd: usize ,buf: &[u8]) -> isize {
+    ecall(SYSCALL_READ, [fd, buf.as_ptr() as usize, buf.len()])
 }
 

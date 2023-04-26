@@ -58,3 +58,7 @@ pub fn exit(code: i32) {
 pub fn write(fd: usize, buf: &[u8]) -> isize {
     syscall::write(fd, buf)
 }
+
+pub fn read(fd: usize, buf: &[u8]) -> isize {
+    syscall::read(fd, buf)
+}
