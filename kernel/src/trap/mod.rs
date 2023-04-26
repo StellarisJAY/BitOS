@@ -1,5 +1,5 @@
 use riscv::register::scause::{self, Trap::{Interrupt, Exception}};
-use riscv::register::{stvec, sepc, sstatus};
+use riscv::register::{stvec, sepc, sstatus, stval};
 use riscv::register::scause::Interrupt::*;
 use riscv::register::scause::Exception::*;
 use context::TrapContext;
@@ -26,6 +26,7 @@ pub fn trap_init() {
 pub unsafe fn user_trap_handler() {
     let mut ctx = current_proc_trap_context();
     let scause = scause::read();
+    let val = stval::read();
     match scause.cause() {
         // 用户进程ecall导致的系统调用
         Exception(UserEnvCall) => {
@@ -36,6 +37,9 @@ pub unsafe fn user_trap_handler() {
             ctx = current_proc_trap_context();
             ctx.a[0] = ret as usize;
         },
+        Exception(IllegalInstruction) => {kernel!("user illegal instruction, stval: {}", val); panic!("illegal instruction")},
+        Exception(LoadPageFault | StorePageFault) => {kernel!("user load/store page fault, stval: {:#x}", val); panic!("page fault")},
+        Exception(LoadFault | StoreFault) => {kernel!("user load/store fault, stval: {:#x}", val); panic!("load/store fault")},
         // 由machine模式时间中断处理器抛出的S模式软件中断
         Interrupt(SupervisorSoft) => {
 
