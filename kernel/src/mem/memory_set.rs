@@ -131,6 +131,7 @@ impl MemorySet {
             let ppn = self.vpn_to_ppn(VirtPageNumber(vpn)).unwrap();
             buffers.push(&ppn.as_bytes()[start_off..end_off]);
             start_off = 0;
+            vpn+=1;
         }
         return buffers;
     }
