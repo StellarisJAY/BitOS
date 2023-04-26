@@ -18,7 +18,9 @@ pub fn cpuid() -> usize {
 pub fn init_processors() {
     // 初始化proc manager（目前仅加载测试程序）
     let mut manager = scheduler::MANAGER.lock();
-    let proc = Arc::new(pcb::ProcessControlBlock::from_elf_data(loader::load_kernel_app("hello_world")));
-    manager.push(proc);
+    let proc1 = Arc::new(pcb::ProcessControlBlock::from_elf_data(loader::load_kernel_app("hello_world")));
+    manager.push(proc1);
+    let proc2 = Arc::new(pcb::ProcessControlBlock::from_elf_data(loader::load_kernel_app("shell")));
+    manager.push(proc2);
     drop(manager);
 }
