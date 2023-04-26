@@ -21,7 +21,7 @@ impl TrapContext {
     pub fn user_trap_context(kernel_satp: usize, kernel_sp: usize, trap_handler: usize, app_entry: usize, user_sp: usize) -> Self {
         return Self {
             kernel_satp: kernel_satp,
-            kernel_sp: kernel_satp,
+            kernel_sp: kernel_sp,
             trap_handler: trap_handler,
             sepc: app_entry,
             sp: user_sp,

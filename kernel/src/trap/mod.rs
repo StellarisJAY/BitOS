@@ -74,7 +74,7 @@ pub fn user_trap_return() {
     let trap_context = TRAP_CONTEXT;
     unsafe {
         // 设置User模式trap处理器
-        stvec::write(_user_vec as usize, stvec::TrapMode::Direct);
+        stvec::write(TRAMPOLINE, stvec::TrapMode::Direct);
         // 切换回User模式
         sstatus::set_spp(sstatus::SPP::User);
         // 使用jr指令直接跳转到地址
