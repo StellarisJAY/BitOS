@@ -25,7 +25,7 @@ impl MemorySet {
             if seg.p_type == PT_LOAD {
                 // vpn range
                 let start_va = VirtAddr(seg.p_vaddr as usize);
-                let end_va = VirtAddr(seg.p_vaddr as usize + seg.p_filesz as usize + PAGE_SIZE);
+                let end_va = VirtAddr(seg.p_vaddr as usize + seg.p_memsz as usize + PAGE_SIZE);
                 let flags = elf_flags_to_pte_flags(seg.p_flags as usize);
                 memset.insert_area(MemoryArea::new(
                     start_va.vpn(),
@@ -78,11 +78,11 @@ pub fn app_map_test(satp: usize) {
     let page_table = PageTable::from_satp(satp);
     let (stack_bottom, _) = user_stack_position();
     // 测试用例：.text, entry_point, trap_ctx, user_stack
-    let cases = vec![0x10200, 0x10208, TRAP_CONTEXT, stack_bottom + PAGE_SIZE];
-    let expect_exec = vec![true, true, false, false];
-    let expect_read = vec![true, true, true, true];
-    let expect_write = vec![false, false, true, true];
-    let expect_umode = vec![true, true, false, true];
+    let cases = vec![0x10200, 0x10208, TRAP_CONTEXT, stack_bottom + PAGE_SIZE, TRAMPOLINE];
+    let expect_exec = vec![true, true, false, false, true];
+    let expect_read = vec![true, true, true, true, true];
+    let expect_write = vec![false, false, true, true, false];
+    let expect_umode = vec![true, true, false, true, false];
 
     for (i, case) in cases.iter().enumerate() {
         let pte = page_table.translate(VirtAddr(*case).vpn()).unwrap();
