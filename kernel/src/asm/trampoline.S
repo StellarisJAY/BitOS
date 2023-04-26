@@ -40,6 +40,9 @@ _user_vec:
     sd s10, 248(a0)
     sd s11, 256(a0)
 
+    # save user's sp and ra
+    sd sp, 32(a0)
+    sd ra, 40(a0)
     # save user's a0
     csrr t0, sscratch
     sd t0, 104(a0)
