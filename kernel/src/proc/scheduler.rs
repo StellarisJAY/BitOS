@@ -52,6 +52,8 @@ pub fn schedule() {
             let old_ctx = p.idle_context_ptr();
             p.current_proc = Some(pcb);
             drop(p);
+            // switch函数调用之后，idle_ctx的ra将保存schedule循环的pc
+            // 下一次schedule_idle后恢复ra并ret，会回到schedule循环中
             unsafe {
                 __switch(old_ctx, new_ctx);
             }
@@ -60,15 +62,26 @@ pub fn schedule() {
 }
 
 pub fn schedule_idle() {
-    let mut processor = PROCESSORS.get(cpuid()).unwrap().borrow();
-    processor.schedule_idle();
-    drop(processor);
+    let processor = PROCESSORS.get(cpuid()).unwrap();
+    let mut p = processor.borrow();
+    // idle上下文
+    let new_ctx = &p.idle_ctx as *const ProcessContext;
+    let current_proc = p.current_proc().unwrap();
+    // 当前进程上下文
+    let old_ctx = current_proc.context_addr() as *mut ProcessContext;
+    p.current_proc = None;
+    drop(p);
+    unsafe {
+        __switch(old_ctx, new_ctx);
+    }
 }
 
 // 在当前进程地址空间，转换一个虚拟地址buf
 pub fn current_proc_translate_buffer(addr: usize, len: usize) -> Vec<&'static [u8]> {
     let processor = PROCESSORS.get(cpuid()).unwrap();
-    return processor.borrow().current_proc().unwrap().translate_buffer(addr, len);
+    let p = processor.borrow();
+    let buf = p.current_proc().unwrap().translate_buffer(addr, len);
+    return buf;
 }
 
 pub fn current_proc_trap_context() -> &'static mut TrapContext {
@@ -144,20 +157,6 @@ impl Processor {
             Some(proc) => return Some(Arc::clone(&proc)),
             None=>None
         }
-    }
-    // 处理器进入idle状态
-    pub fn schedule_idle(&mut self) {
-        // idle上下文
-        let new_ctx = &self.idle_ctx as *const ProcessContext;
-        let current_proc = self.current_proc().unwrap();
-        // 当前进程上下文
-        let old_ctx = current_proc.context_addr() as *mut ProcessContext;
-        unsafe {
-            __switch(old_ctx, new_ctx);
-        }
-        self.current_proc = None;
-        // 当前进程进入FIFO队列
-        push_process(current_proc);
     }
     // 获取idle进程的ctx
     pub fn idle_context_ptr(&mut self) -> *mut ProcessContext {

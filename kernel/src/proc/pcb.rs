@@ -40,7 +40,6 @@ impl InnerPCB {
     pub fn get_trap_context(&mut self) -> &mut TrapContext {
         unsafe {
             let ptr = self.trap_context.base_addr() as *mut TrapContext;
-            debug!("trap_ctx base addr: {}", self.trap_context.base_addr());
             ptr.as_mut().unwrap()
         }
     }
