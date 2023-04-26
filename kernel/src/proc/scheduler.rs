@@ -77,7 +77,7 @@ pub fn schedule_idle() {
 }
 
 // 在当前进程地址空间，转换一个虚拟地址buf
-pub fn current_proc_translate_buffer(addr: usize, len: usize) -> Vec<&'static [u8]> {
+pub fn current_proc_translate_buffer(addr: usize, len: usize) -> Vec<&'static mut [u8]> {
     let processor = PROCESSORS.get(cpuid()).unwrap();
     let p = processor.borrow();
     let buf = p.current_proc().unwrap().translate_buffer(addr, len);
@@ -117,8 +117,14 @@ pub fn exit_current_proc(exit_code: i32) {
     drop(processor);
 }
 
+pub fn current_proc() -> Arc<ProcessControlBlock> {
+    let mut processor = PROCESSORS.get(cpuid()).unwrap().borrow();
+    let current_proc = processor.current_proc().unwrap();
+    return Arc::clone(&current_proc);
+}
+
 // 进程管理器添加进程
-fn push_process(proc: Arc<ProcessControlBlock>) {
+pub fn push_process(proc: Arc<ProcessControlBlock>) {
     MANAGER.lock().push(Arc::clone(&proc));
 }
 

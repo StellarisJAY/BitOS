@@ -78,7 +78,7 @@ impl ProcessControlBlock {
         return self.inner.borrow().memory_set.satp();
     }
     // 转换虚拟地址buffer到物理页集合
-    pub fn translate_buffer(&self, addr: usize, len: usize) -> Vec<&'static [u8]> {
+    pub fn translate_buffer(&self, addr: usize, len: usize) -> Vec<&'static mut [u8]> {
         let inner = self.inner.borrow();
         let res = inner.memory_set.translate_buffer(addr, len);
         drop(inner);

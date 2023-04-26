@@ -117,19 +117,19 @@ impl MemorySet {
     }
 
     // 虚拟地址的连续buffer，转换成物理页的切片集合
-    pub fn translate_buffer(&self, addr: usize, len: usize) -> Vec<&'static [u8]> {
+    pub fn translate_buffer(&self, addr: usize, len: usize) -> Vec<&'static mut [u8]> {
         let (start_va, end_va) = (VirtAddr(addr), VirtAddr(addr + len));
         let mut vpn = start_va.vpn().0;
         let end_vpn = end_va.vpn().0;
         let mut start_off = start_va.offset();
         let mut end_off = PAGE_SIZE;
-        let mut buffers: Vec<&'static [u8]> = Vec::new();
+        let mut buffers: Vec<&'static mut [u8]> = Vec::new();
         while vpn <= end_vpn {
             if vpn == end_vpn {
                 end_off = end_va.offset();
             }
             let ppn = self.vpn_to_ppn(VirtPageNumber(vpn)).unwrap();
-            buffers.push(&ppn.as_bytes()[start_off..end_off]);
+            buffers.push(&mut ppn.as_bytes()[start_off..end_off]);
             start_off = 0;
             vpn+=1;
         }
