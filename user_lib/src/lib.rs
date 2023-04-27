@@ -66,3 +66,7 @@ pub fn read(fd: usize, buf: &[u8]) -> isize {
 pub fn fork() -> isize {
     syscall::fork()
 }
+
+pub fn yield_() {
+    syscall::yield_();
+}
