@@ -62,3 +62,7 @@ pub fn write(fd: usize, buf: &[u8]) -> isize {
 pub fn read(fd: usize, buf: &[u8]) -> isize {
     syscall::read(fd, buf)
 }
+
+pub fn fork() -> isize {
+    syscall::fork()
+}

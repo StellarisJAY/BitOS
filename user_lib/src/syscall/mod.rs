@@ -3,6 +3,7 @@ use core::arch::asm;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
+const SYSCALL_FORK: usize = 220;
 
 // ecall 系统调用
 fn ecall(id: usize, args: [usize; 3]) -> isize {
@@ -29,3 +30,6 @@ pub fn read(fd: usize ,buf: &[u8]) -> isize {
     ecall(SYSCALL_READ, [fd, buf.as_ptr() as usize, buf.len()])
 }
 
+pub fn fork() -> isize {
+    ecall(SYSCALL_FORK, [0usize; 3])
+}
