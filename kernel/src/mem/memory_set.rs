@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 use super::page_table::{PageTable, PageTableEntry};
 use bitflags::bitflags;
 use crate::config::{PAGE_SIZE, TRAMPOLINE};
+use alloc::sync::Arc;
 
 bitflags! {
     pub struct MemPermission: usize {
@@ -16,7 +17,7 @@ bitflags! {
 }
 
 // 虚拟内存到物理内存的映射方式
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum MapMode {
     Direct,    // 直接映射：vpn = ppn
     Indirect,  // 间接映射：vpn != ppn, rand(ppn)
@@ -26,7 +27,7 @@ pub enum MapMode {
 pub struct MemoryArea {
     pub start_vpn: VirtPageNumber,
     pub end_vpn: VirtPageNumber,
-    pub frames: BTreeMap<VirtPageNumber, Frame>,  // frames集合，保存内存段拥有的所有物理页
+    pub frames: BTreeMap<VirtPageNumber, Arc<Frame>>,  // frames集合，保存内存段拥有的所有物理页
     pub mode: MapMode,                            // 内存段映射模式
     pub perm: usize,
 }
@@ -57,7 +58,7 @@ impl MemoryArea {
                     frame.ppn.as_bytes()[0..(limit - offset)].copy_from_slice(&bytes[offset..limit]);
                     offset = limit;
                 }
-                self.frames.insert(VirtPageNumber(vpn), frame);
+                self.frames.insert(VirtPageNumber(vpn), Arc::new(frame));
             }
         }
     }

@@ -5,6 +5,8 @@ use elf::endian::AnyEndian;
 use crate::config::*;
 use super::page_table::*;
 use alloc::vec;
+use alloc::sync::Arc;
+
 const PT_LOAD: u32 = 1;
 
 // 应用程序虚拟地址空间布局：
@@ -38,21 +40,73 @@ impl MemorySet {
         }
         // 在高地址映射用户栈
         let (stack_bottom, stack_top) = user_stack_position();
-        memset.insert_area(MemoryArea::new(
-                VirtAddr(stack_bottom).vpn(),
+        debug!("app stack: {:#x} {:#x}", stack_bottom, stack_top);
+        // 映射用户栈，trampoline， trap上下文
+        memset.map_app_common_areas(stack_bottom, stack_top);
+        return (memset, elf.ehdr.e_entry as usize, stack_top);
+    }
+
+    // 从父进程地址空间构建子进程地址空间
+    pub fn from_parent(parent: &MemorySet) -> (MemorySet, usize) {
+        let mut memset = Self::new();
+        let (stack_bottom, stack_top) = user_stack_position();
+        let (stack_bottom_vpn, trap_context_vpn) = (VirtAddr(stack_bottom).vpn(), VirtAddr(TRAP_CONTEXT).vpn());
+        parent.areas.iter().for_each(|area| {
+            // trap上下文直接复制父进程的
+            if area.start_vpn == trap_context_vpn {
+                let ppn = parent.page_table.vpn_to_ppn(trap_context_vpn).unwrap();
+                let area = MemoryArea::new(trap_context_vpn, VirtPageNumber(trap_context_vpn.0 + 1), MapMode::Indirect, area.perm);
+                memset.insert_area(area, Some(ppn.as_bytes()));
+                return;
+            }
+            let mut child_area = MemoryArea::new(area.start_vpn, area.end_vpn, area.mode, area.perm);
+            // 将子进程的memset的vpn映射到父进程的物理页，并设置不可写（write触发PageFault，实现CopyOnWrite）
+            for vpn in area.start_vpn.0..area.end_vpn.0 {
+                let frame = area.frames.get(&VirtPageNumber(vpn)).unwrap();
+                let flags = set_unwritable(area.perm);
+                memset.page_table.map(VirtPageNumber(vpn), frame.ppn, flags);
+                // 子进程要持有物理页的引用计数，避免父进程丢弃物理页后，物理页被自动回收
+                child_area.frames.insert(VirtPageNumber(vpn), Arc::clone(&frame));
+            }
+            memset.areas.push(child_area);
+        });
+
+        // 子进程的栈与父进程相同，所以
+        memset.map_trampoline();
+        return (memset, stack_top);
+    }
+
+    // 删除可写权限，使写父进程和子进程写内存触发PageFault，然后在trap中进行CopyOnWrite
+    pub fn remove_write_permission(&mut self) {
+        self.areas.iter().for_each(|mut area| {
+            // trap context 父子进程不共享
+            if area.start_vpn != VirtAddr(TRAP_CONTEXT).vpn() && (MemPermission::W.bits() & area.perm != 0) {
+                // 在页表上将每个vpn的pte设置不可写
+                for vpn in area.start_vpn.0 .. area.end_vpn.0 {
+                    let pte = self.page_table.translate(VirtPageNumber(vpn)).unwrap();
+                    pte.set_unwritable();
+                }
+            }
+        });
+    }
+
+    // 映射app通用的区域：用户栈、trampoline、trap上下文
+    pub fn map_app_common_areas(&mut self, stack_bottom: usize, stack_top: usize) {
+        self.insert_area(MemoryArea::new(
+            VirtAddr(stack_bottom).vpn(),
                 VirtAddr(stack_top).vpn(),
                 MapMode::Indirect,
                 MemPermission::R.bits() | MemPermission::W.bits() | MemPermission::U.bits() // 用户栈设置U mode，只允许用户模式访问
         ), None);
         // 映射Trampoline
-        memset.map_trampoline();
+        self.map_trampoline();
         // 映射TrapContext
-        memset.insert_area(MemoryArea::new(
+        self.insert_area(MemoryArea::new(
             VirtAddr(TRAP_CONTEXT).vpn(),
                 VirtAddr(TRAP_CONTEXT + PAGE_SIZE).vpn(),
                 MapMode::Indirect,
-                MemPermission::R.bits() | MemPermission::W.bits()), None); // trap_ctx 只在Supervisor访问，不设置U mode
-        return (memset, elf.ehdr.e_entry as usize, stack_top);
+                MemPermission::R.bits() | MemPermission::W.bits()
+        ), None); // trap_ctx 只在Supervisor访问，不设置U mode
     }
 }
 
@@ -70,6 +124,10 @@ fn elf_flags_to_pte_flags(p_flags: usize) -> usize {
         flags |= MemPermission::R.bits();
     }
     return flags;
+}
+
+fn set_unwritable(flags: usize) -> usize {
+    return flags & (MemPermission::W.bits().reverse_bits());
 }
 
 #[allow(unused)]

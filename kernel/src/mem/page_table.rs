@@ -71,6 +71,10 @@ impl PageTableEntry {
     pub fn is_usermode(&self) -> bool {
         return PteFlags::U.bits & self.bits != 0;
     }
+
+    pub fn set_unwritable(&mut self) {
+        self.bits &= !PteFlags::W.bits;
+    }
 }
 
 impl PageTable {
