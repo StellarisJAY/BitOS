@@ -22,10 +22,6 @@ pub struct Processor {
     current_proc: Option<Arc<ProcessControlBlock>>,
 }
 
-// 从内核.data段加载init_proc的elf数据
-lazy_static! {
-    pub static ref INIT_PROC: Arc<ProcessControlBlock> = Arc::new(ProcessControlBlock::from_elf_data(load_kernel_app("init_proc")));
-}
 
 lazy_static! {
     pub static ref MANAGER: SpinMutex<ProcManager> = SpinMutex::new(ProcManager::new());
@@ -109,7 +105,7 @@ pub fn exit_current_proc(exit_code: i32) {
     // 将子进程的parent设置为init_proc
     for child in inner.children.iter() {
         let mut child_inner = child.borrow_inner();
-        child_inner.parent = Some(Arc::clone(&INIT_PROC));
+        child_inner.parent = None;
         drop(child_inner);
     }
     drop(inner);
