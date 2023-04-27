@@ -150,7 +150,7 @@ fn elf_flags_to_pte_flags(p_flags: usize) -> usize {
 }
 
 fn set_unwritable(flags: usize) -> usize {
-    return flags & (MemPermission::W.bits().reverse_bits());
+    return flags & (!MemPermission::W.bits());
 }
 
 #[allow(unused)]
