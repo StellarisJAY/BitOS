@@ -21,8 +21,12 @@ pub fn init_processors() {
     ));
     manager.push(proc1);
     let proc2 = Arc::new(pcb::ProcessControlBlock::from_elf_data(
-        loader::load_kernel_app("shell"),
+        loader::load_kernel_app("fork_test"),
     ));
     manager.push(proc2);
+//    let proc2 = Arc::new(pcb::ProcessControlBlock::from_elf_data(
+//        loader::load_kernel_app("shell"),
+//    ));
+//    manager.push(proc2);
     drop(manager);
 }
