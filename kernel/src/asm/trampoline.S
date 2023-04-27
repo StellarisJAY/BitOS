@@ -108,8 +108,9 @@ _user_ret:
     ld s10, 248(a0)
     ld s11, 256(a0)
 
-    # load user stack sp
+    # load user sp and ra
     ld sp, 32(a0)
+    ld ra, 40(a0)
     # swap a0 and sscratch
     # after swap, a0=saved a0, sscratch=trap_context
     # so that in _user_vec we can access trap_context by sscratch
