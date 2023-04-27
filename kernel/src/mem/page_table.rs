@@ -75,6 +75,10 @@ impl PageTableEntry {
     pub fn set_unwritable(&mut self) {
         self.bits &= !PteFlags::W.bits;
     }
+
+    pub fn set_writable(&mut self) {
+        self.bits |= PteFlags::W.bits;
+    }
 }
 
 impl PageTable {

@@ -105,6 +105,12 @@ impl ProcessControlBlock {
         return pcb;
     }
 
+    pub fn copy_on_write(&self, vpn: VirtPageNumber) -> bool {
+        let mut inner = self.inner.borrow();
+        let vpn_valid = inner.memory_set.copy_on_write(vpn);
+        return vpn_valid;
+    }
+
     pub fn user_satp(&self) -> usize {
         return self.inner.borrow().memory_set.satp();
     }

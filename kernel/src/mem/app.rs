@@ -6,6 +6,7 @@ use crate::config::*;
 use super::page_table::*;
 use alloc::vec;
 use alloc::sync::Arc;
+use super::allocator::alloc;
 
 const PT_LOAD: u32 = 1;
 
@@ -40,7 +41,6 @@ impl MemorySet {
         }
         // 在高地址映射用户栈
         let (stack_bottom, stack_top) = user_stack_position();
-        debug!("app stack: {:#x} {:#x}", stack_bottom, stack_top);
         // 映射用户栈，trampoline， trap上下文
         memset.map_app_common_areas(stack_bottom, stack_top);
         return (memset, elf.ehdr.e_entry as usize, stack_top);
@@ -88,6 +88,29 @@ impl MemorySet {
                 }
             }
         });
+    }
+
+    pub fn copy_on_write(&mut self, vpn: VirtPageNumber) -> bool {
+        let mut vpn_valid = false;
+        for area in self.areas.iter_mut() {
+            if !area.frames.contains_key(&vpn) {
+                continue;
+            }
+            vpn_valid = true;
+            // 删除Arc<Frame>使物理页的引用计数减少，最终被回收
+            let frame = area.frames.remove(&vpn).unwrap();
+            // 新分配一个物理页，将原来物理页的数据拷贝
+            let new_frame = alloc().unwrap();
+            new_frame.ppn.as_bytes().copy_from_slice(frame.ppn.as_bytes());
+            // 修改页表，设置writable，设置新ppn
+            let pte = self.page_table.translate(vpn).unwrap();
+            pte.set_ppn(new_frame.ppn);
+            pte.set_writable();
+            area.frames.insert(vpn, Arc::new(new_frame));
+            drop(frame);
+            break;
+        }
+        return vpn_valid;
     }
 
     // 映射app通用的区域：用户栈、trampoline、trap上下文

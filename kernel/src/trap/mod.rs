@@ -3,10 +3,11 @@ use riscv::register::{stvec, sepc, sstatus, stval};
 use riscv::register::scause::Interrupt::*;
 use riscv::register::scause::Exception::*;
 use context::TrapContext;
-use crate::proc::scheduler::{current_proc_trap_context, current_proc_satp, current_proc_trap_addr};
+use crate::proc::scheduler::{current_proc_trap_context, current_proc_satp, current_proc_trap_addr, current_proc};
 use crate::syscall::handle_syscall;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use core::arch::asm;
+use crate::mem::address::VirtAddr;
 
 pub mod context;
 
@@ -38,12 +39,19 @@ pub unsafe fn user_trap_handler() {
             ctx.a[0] = ret as usize;
         },
         Exception(IllegalInstruction) => {kernel!("user illegal instruction, stval: {}", val); panic!("illegal instruction")},
-        Exception(LoadPageFault | StorePageFault) => {kernel!("user load/store page fault, stval: {:#x}", val); panic!("page fault")},
+        Exception(LoadPageFault) => {kernel!("user load page fault, stval: {:#x}", val); panic!("load page fault")},
         Exception(LoadFault | StoreFault) => {kernel!("user load/store fault, stval: {:#x}", val); panic!("load/store fault")},
         // 由machine模式时间中断处理器抛出的S模式软件中断
         Interrupt(SupervisorSoft) => {
 
         },
+        Exception(StorePageFault) => {
+            let proc = current_proc();
+            if !proc.copy_on_write(VirtAddr(val).vpn()) {
+                kernel!("store page fault, va: {:#x}", val);
+                panic!("store page fault");
+            }
+        }
         _ => panic!("unhandled trap"),
     }
     user_trap_return();
