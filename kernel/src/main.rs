@@ -3,25 +3,24 @@
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
 #![allow(unused)]
-use core::arch::global_asm;
-use core::arch::asm;
-use riscv::register::*;
-use proc::cpuid;
-use config::CPUS;
 use arch::riscv::register::*;
+use config::CPUS;
+use core::arch::asm;
+use core::arch::global_asm;
+use proc::cpuid;
+use riscv::register::*;
 extern crate alloc;
-
 
 #[macro_use]
 mod console;
-mod trap;
-mod mem;
-mod sync;
-mod syscall;
 mod arch;
 mod config;
 mod driver;
+mod mem;
 mod proc;
+mod sync;
+mod syscall;
+mod trap;
 
 global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));
@@ -57,7 +56,7 @@ pub fn rust_start() {
     }
 }
 
-static mut TIMER_SCRATCH:[[usize; 5]; CPUS] = [[0usize; 5]; CPUS];
+static mut TIMER_SCRATCH: [[usize; 5]; CPUS] = [[0usize; 5]; CPUS];
 
 // 初始化m时钟中断
 unsafe fn timer_init() {
@@ -106,27 +105,31 @@ pub unsafe fn rust_main() {
         kernel!("kernel memory mapped and initialized, switched to kernel mem space");
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
-    }else {
+    } else {
         while KERNEL_INITED.load(Ordering::SeqCst) == 0 {}
     }
     proc::scheduler::schedule();
 }
 
 #[panic_handler]
-fn panic_handler(info: &core::panic::PanicInfo) -> !{
+fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     match info.location() {
         Some(loc) => {
             if let Some(msg) = info.message() {
-                error!("kernel panicked at {}:{}, message: {}",loc.file(), loc.line(), msg.as_str().unwrap_or("no message"));
-            }else {
-                error!("kernel panicked at {}:{}",loc.file(), loc.line());
+                error!(
+                    "kernel panicked at {}:{}, message: {}",
+                    loc.file(),
+                    loc.line(),
+                    msg.as_str().unwrap_or("no message")
+                );
+            } else {
+                error!("kernel panicked at {}:{}", loc.file(), loc.line());
             }
-        },
+        }
         None => {
             error!("kernel panicked");
         }
     }
-    
+
     loop {}
 }
-

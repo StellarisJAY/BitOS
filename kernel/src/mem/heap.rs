@@ -1,5 +1,5 @@
-use buddy_system_allocator::LockedHeap;
 use crate::config::KERNEL_HEAP_SIZE;
+use buddy_system_allocator::LockedHeap;
 
 // 必须为mut，否则会被编译器分配到rodata只读段
 static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
@@ -13,7 +13,6 @@ pub fn init() {
         ALLOCATOR.lock().init(start, KERNEL_HEAP_SIZE);
     }
 }
-
 
 #[allow(unused)]
 pub fn heap_test() {

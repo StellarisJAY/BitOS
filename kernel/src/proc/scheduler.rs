@@ -1,19 +1,19 @@
 use super::context::ProcessContext;
-use super::pcb::{ProcessControlBlock, ProcessState};
-use alloc::collections::VecDeque;
-use alloc::vec::Vec;
-use alloc::sync::Arc;
-use lazy_static::lazy_static;
-use super::loader::load_kernel_app;
-use spin::mutex::SpinMutex;
-use crate::config::CPUS;
-use crate::trap::context::TrapContext;
-use crate::sync::cell::SafeCell;
 use super::cpuid;
+use super::loader::load_kernel_app;
+use super::pcb::{ProcessControlBlock, ProcessState};
+use crate::config::CPUS;
+use crate::sync::cell::SafeCell;
+use crate::trap::context::TrapContext;
+use alloc::collections::VecDeque;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
+use lazy_static::lazy_static;
+use spin::mutex::SpinMutex;
 
 // FIFO进程管理器
 pub struct ProcManager {
-    queue: VecDeque<Arc<ProcessControlBlock>> // FIFO队列
+    queue: VecDeque<Arc<ProcessControlBlock>>, // FIFO队列
 }
 
 // 处理器，负责调度运行一个进程
@@ -21,7 +21,6 @@ pub struct Processor {
     idle_ctx: ProcessContext,
     current_proc: Option<Arc<ProcessControlBlock>>,
 }
-
 
 lazy_static! {
     pub static ref MANAGER: SpinMutex<ProcManager> = SpinMutex::new(ProcManager::new());
@@ -87,7 +86,11 @@ pub fn current_proc_trap_context() -> &'static mut TrapContext {
 
 pub fn current_proc_trap_addr() -> usize {
     let processor = PROCESSORS.get(cpuid()).unwrap();
-    return processor.borrow().current_proc().unwrap().trap_context_addr();
+    return processor
+        .borrow()
+        .current_proc()
+        .unwrap()
+        .trap_context_addr();
 }
 
 pub fn current_proc_satp() -> usize {
@@ -131,7 +134,9 @@ fn pop_process() -> Option<Arc<ProcessControlBlock>> {
 
 impl ProcManager {
     pub fn new() -> Self {
-        return Self { queue: VecDeque::new()};
+        return Self {
+            queue: VecDeque::new(),
+        };
     }
 
     pub fn push(&mut self, process: Arc<ProcessControlBlock>) {
@@ -143,7 +148,6 @@ impl ProcManager {
     }
 }
 
-
 extern "C" {
     // cpu切换进程上下文的汇编函数
     fn __switch(old_ctx: *mut ProcessContext, new_ctx: *const ProcessContext);
@@ -151,13 +155,16 @@ extern "C" {
 
 impl Processor {
     pub fn new() -> Self {
-        Self { idle_ctx: ProcessContext::empty(), current_proc: None }
+        Self {
+            idle_ctx: ProcessContext::empty(),
+            current_proc: None,
+        }
     }
 
     fn current_proc(&self) -> Option<Arc<ProcessControlBlock>> {
         match &self.current_proc {
             Some(proc) => return Some(Arc::clone(&proc)),
-            None=>None
+            None => None,
         }
     }
     // 获取idle进程的ctx

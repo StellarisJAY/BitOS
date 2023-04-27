@@ -1,7 +1,7 @@
-use spin::mutex::SpinMutex;
-use spin::lazy::Lazy;
-use core::fmt::*;
 use crate::arch::riscv::qemu::layout::UART0;
+use core::fmt::*;
+use spin::lazy::Lazy;
+use spin::mutex::SpinMutex;
 
 // uart 寄存器组，see：https://www.lammertbies.nl/comm/info/serial-uart
 const RHR: usize = 0; // 读缓冲（8bit）
@@ -21,10 +21,9 @@ const LCR_BAUD_LATCH: usize = 1 << 7; // DLAB, DLL DLM accessible
 
 pub struct Uart {}
 
-pub static UART: Lazy<SpinMutex<Uart>> = Lazy::new(||{
+pub static UART: Lazy<SpinMutex<Uart>> = Lazy::new(|| {
     return SpinMutex::new(Uart::new());
 });
-
 
 pub fn get_char() -> Option<u8> {
     let uart = UART.lock();
@@ -50,7 +49,7 @@ impl Write for Uart {
 
 impl Uart {
     pub fn new() -> Self {
-        Self{}
+        Self {}
     }
     pub fn init() {
         // 关闭中断
@@ -70,24 +69,27 @@ impl Uart {
         let ptr = reg_addr(THR) as *mut u8;
         loop {
             // 等待THR空闲
-            if read_reg(LSR) & (1<<5) != 0 {
+            if read_reg(LSR) & (1 << 5) != 0 {
                 break;
             }
         }
-        unsafe {ptr.write_volatile(ch);}
+        unsafe {
+            ptr.write_volatile(ch);
+        }
     }
 
     pub fn get(&self) -> Option<u8> {
         let ptr = reg_addr(RHR) as *mut u8;
         // 判断RHR是否有数据
         if read_reg(LSR) & 1 != 0 {
-            unsafe {return Some(ptr.read_volatile());}
-        }else{
+            unsafe {
+                return Some(ptr.read_volatile());
+            }
+        } else {
             return None;
         }
     }
 }
-
 
 fn reg_addr(reg: usize) -> usize {
     return UART0 + reg;
@@ -103,8 +105,5 @@ fn write_reg(reg: usize, val: u8) {
 
 fn read_reg(reg: usize) -> u8 {
     let ptr = reg_addr(reg) as *const u8;
-    unsafe {
-        ptr.read_volatile()
-    }
+    unsafe { ptr.read_volatile() }
 }
-

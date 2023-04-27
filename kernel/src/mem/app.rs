@@ -1,12 +1,12 @@
 use super::address::*;
-use super::memory_set::*;
-use elf::ElfBytes;
-use elf::endian::AnyEndian;
-use crate::config::*;
-use super::page_table::*;
-use alloc::vec;
-use alloc::sync::Arc;
 use super::allocator::alloc;
+use super::memory_set::*;
+use super::page_table::*;
+use crate::config::*;
+use alloc::sync::Arc;
+use alloc::vec;
+use elf::endian::AnyEndian;
+use elf::ElfBytes;
 
 const PT_LOAD: u32 = 1;
 
@@ -30,12 +30,15 @@ impl MemorySet {
                 let start_va = VirtAddr(seg.p_vaddr as usize);
                 let end_va = VirtAddr(seg.p_vaddr as usize + seg.p_memsz as usize + PAGE_SIZE);
                 let flags = elf_flags_to_pte_flags(seg.p_flags as usize);
-                memset.insert_area(MemoryArea::new(
-                    start_va.vpn(),
+                memset.insert_area(
+                    MemoryArea::new(
+                        start_va.vpn(),
                         end_va.vpn(),
                         MapMode::Indirect,
-                        elf_flags_to_pte_flags(seg.p_flags as usize) | MemPermission::U.bits()), // RWX flags
-                Some(elf.segment_data(&seg).unwrap())); // copy data
+                        elf_flags_to_pte_flags(seg.p_flags as usize) | MemPermission::U.bits(),
+                    ), // RWX flags
+                    Some(elf.segment_data(&seg).unwrap()),
+                ); // copy data
                 max_vpn = end_va.vpn().0;
             }
         }
@@ -50,23 +53,32 @@ impl MemorySet {
     pub fn from_parent(parent: &MemorySet) -> (MemorySet, usize) {
         let mut memset = Self::new();
         let (stack_bottom, stack_top) = user_stack_position();
-        let (stack_bottom_vpn, trap_context_vpn) = (VirtAddr(stack_bottom).vpn(), VirtAddr(TRAP_CONTEXT).vpn());
+        let (stack_bottom_vpn, trap_context_vpn) =
+            (VirtAddr(stack_bottom).vpn(), VirtAddr(TRAP_CONTEXT).vpn());
         parent.areas.iter().for_each(|area| {
             // trap上下文直接复制父进程的
             if area.start_vpn == trap_context_vpn {
                 let ppn = parent.page_table.vpn_to_ppn(trap_context_vpn).unwrap();
-                let area = MemoryArea::new(trap_context_vpn, VirtPageNumber(trap_context_vpn.0 + 1), MapMode::Indirect, area.perm);
+                let area = MemoryArea::new(
+                    trap_context_vpn,
+                    VirtPageNumber(trap_context_vpn.0 + 1),
+                    MapMode::Indirect,
+                    area.perm,
+                );
                 memset.insert_area(area, Some(ppn.as_bytes()));
                 return;
             }
-            let mut child_area = MemoryArea::new(area.start_vpn, area.end_vpn, area.mode, area.perm);
+            let mut child_area =
+                MemoryArea::new(area.start_vpn, area.end_vpn, area.mode, area.perm);
             // 将子进程的memset的vpn映射到父进程的物理页，并设置不可写（write触发PageFault，实现CopyOnWrite）
             for vpn in area.start_vpn.0..area.end_vpn.0 {
                 let frame = area.frames.get(&VirtPageNumber(vpn)).unwrap();
                 let flags = set_unwritable(area.perm);
                 memset.page_table.map(VirtPageNumber(vpn), frame.ppn, flags);
                 // 子进程要持有物理页的引用计数，避免父进程丢弃物理页后，物理页被自动回收
-                child_area.frames.insert(VirtPageNumber(vpn), Arc::clone(&frame));
+                child_area
+                    .frames
+                    .insert(VirtPageNumber(vpn), Arc::clone(&frame));
             }
             memset.areas.push(child_area);
         });
@@ -80,9 +92,11 @@ impl MemorySet {
     pub fn remove_write_permission(&mut self) {
         self.areas.iter().for_each(|mut area| {
             // trap context 父子进程不共享
-            if area.start_vpn != VirtAddr(TRAP_CONTEXT).vpn() && (MemPermission::W.bits() & area.perm != 0) {
+            if area.start_vpn != VirtAddr(TRAP_CONTEXT).vpn()
+                && (MemPermission::W.bits() & area.perm != 0)
+            {
                 // 在页表上将每个vpn的pte设置不可写
-                for vpn in area.start_vpn.0 .. area.end_vpn.0 {
+                for vpn in area.start_vpn.0..area.end_vpn.0 {
                     let pte = self.page_table.translate(VirtPageNumber(vpn)).unwrap();
                     pte.set_unwritable();
                 }
@@ -101,7 +115,10 @@ impl MemorySet {
             let frame = area.frames.remove(&vpn).unwrap();
             // 新分配一个物理页，将原来物理页的数据拷贝
             let new_frame = alloc().unwrap();
-            new_frame.ppn.as_bytes().copy_from_slice(frame.ppn.as_bytes());
+            new_frame
+                .ppn
+                .as_bytes()
+                .copy_from_slice(frame.ppn.as_bytes());
             // 修改页表，设置writable，设置新ppn
             let pte = self.page_table.translate(vpn).unwrap();
             pte.set_ppn(new_frame.ppn);
@@ -115,21 +132,27 @@ impl MemorySet {
 
     // 映射app通用的区域：用户栈、trampoline、trap上下文
     pub fn map_app_common_areas(&mut self, stack_bottom: usize, stack_top: usize) {
-        self.insert_area(MemoryArea::new(
-            VirtAddr(stack_bottom).vpn(),
+        self.insert_area(
+            MemoryArea::new(
+                VirtAddr(stack_bottom).vpn(),
                 VirtAddr(stack_top).vpn(),
                 MapMode::Indirect,
-                MemPermission::R.bits() | MemPermission::W.bits() | MemPermission::U.bits() // 用户栈设置U mode，只允许用户模式访问
-        ), None);
+                MemPermission::R.bits() | MemPermission::W.bits() | MemPermission::U.bits(), // 用户栈设置U mode，只允许用户模式访问
+            ),
+            None,
+        );
         // 映射Trampoline
         self.map_trampoline();
         // 映射TrapContext
-        self.insert_area(MemoryArea::new(
-            VirtAddr(TRAP_CONTEXT).vpn(),
+        self.insert_area(
+            MemoryArea::new(
+                VirtAddr(TRAP_CONTEXT).vpn(),
                 VirtAddr(TRAP_CONTEXT + PAGE_SIZE).vpn(),
                 MapMode::Indirect,
-                MemPermission::R.bits() | MemPermission::W.bits()
-        ), None); // trap_ctx 只在Supervisor访问，不设置U mode
+                MemPermission::R.bits() | MemPermission::W.bits(),
+            ),
+            None,
+        ); // trap_ctx 只在Supervisor访问，不设置U mode
     }
 }
 
@@ -159,7 +182,13 @@ pub fn app_map_test(satp: usize) {
     let page_table = PageTable::from_satp(satp);
     let (stack_bottom, _) = user_stack_position();
     // 测试用例：.text, entry_point, trap_ctx, user_stack
-    let cases = vec![0x10200, 0x10208, TRAP_CONTEXT, stack_bottom + PAGE_SIZE, TRAMPOLINE];
+    let cases = vec![
+        0x10200,
+        0x10208,
+        TRAP_CONTEXT,
+        stack_bottom + PAGE_SIZE,
+        TRAMPOLINE,
+    ];
     let expect_exec = vec![true, true, false, false, true];
     let expect_read = vec![true, true, true, true, true];
     let expect_write = vec![false, false, true, true, false];
@@ -168,8 +197,14 @@ pub fn app_map_test(satp: usize) {
     for (i, case) in cases.iter().enumerate() {
         let pte = page_table.translate(VirtAddr(*case).vpn()).unwrap();
         assert!(pte.is_valid(), "pte should be valid");
-        assert!(pte.is_usermode() == expect_umode[i], "pte shoule be usermode");
-        assert!(pte.is_executable() == expect_exec[i], "executable missmatch");
+        assert!(
+            pte.is_usermode() == expect_umode[i],
+            "pte shoule be usermode"
+        );
+        assert!(
+            pte.is_executable() == expect_exec[i],
+            "executable missmatch"
+        );
         assert!(pte.is_readalbe() == expect_read[i], "readable missmatch");
         assert!(pte.is_writable() == expect_write[i], "writable missmatch");
         debug!("test case {} passed", i);

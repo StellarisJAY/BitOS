@@ -1,5 +1,5 @@
+use super::qemu::layout::{CLINT0, CLINT_MTIME, CLINT_MTIMECMP};
 use core::arch::asm;
-use super::qemu::layout::{CLINT0,  CLINT_MTIME, CLINT_MTIMECMP};
 use core::ptr;
 #[inline]
 pub unsafe fn write_medeleg(val: usize) {
@@ -28,21 +28,21 @@ pub unsafe fn read_mtime() -> usize {
     ptr::read_volatile(CLINT_MTIME as *const usize)
 }
 
-pub unsafe fn read_mtimecmp(mhartid:usize) -> usize {
-    ptr::read_volatile((CLINT_MTIMECMP + 8*mhartid) as *const usize)
+pub unsafe fn read_mtimecmp(mhartid: usize) -> usize {
+    ptr::read_volatile((CLINT_MTIMECMP + 8 * mhartid) as *const usize)
 }
 
-unsafe fn write_mtimecmp(mhartid:usize, value: usize) {
-    let offset = CLINT_MTIME + 8*mhartid;
+unsafe fn write_mtimecmp(mhartid: usize, value: usize) {
+    let offset = CLINT_MTIME + 8 * mhartid;
     ptr::write_volatile(offset as *mut usize, value);
 }
 
-pub unsafe fn add_mtimecmp(mhartid:usize, interval:usize){
+pub unsafe fn add_mtimecmp(mhartid: usize, interval: usize) {
     let value = read_mtime();
     // 下一个中断的时间：当前time+间隔
-    write_mtimecmp(mhartid, value+interval);
+    write_mtimecmp(mhartid, value + interval);
 }
 
-pub fn mtime_cmp_addr(mhartid:usize) -> usize{
-    return CLINT_MTIMECMP + 8*mhartid;
+pub fn mtime_cmp_addr(mhartid: usize) -> usize {
+    return CLINT_MTIMECMP + 8 * mhartid;
 }

@@ -1,10 +1,10 @@
 pub mod address;
-pub mod page_table;
 pub mod allocator;
-pub mod heap;
-pub mod memory_set;
-pub mod kernel;
 pub mod app;
+pub mod heap;
+pub mod kernel;
+pub mod memory_set;
+pub mod page_table;
 
 pub fn init() {
     heap::init();

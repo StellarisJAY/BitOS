@@ -1,8 +1,8 @@
 use super::address::*;
-use super::allocator::{Frame, alloc, dealloc};
-use bitflags::bitflags;
-use alloc::vec::{Vec};
+use super::allocator::{alloc, dealloc, Frame};
 use alloc::vec;
+use alloc::vec::Vec;
+use bitflags::bitflags;
 
 pub const SV39_PTE_PPN_BITS: usize = 44;
 pub const SV39_PTE_FLAG_BITS: usize = 10;
@@ -33,24 +33,24 @@ bitflags! {
 #[repr(C)]
 pub struct PageTable {
     pub root_ppn: PhysPageNumber,
-    pub frames: Vec<Frame>,     // frame保存页表使用的物理页的所有权
+    pub frames: Vec<Frame>, // frame保存页表使用的物理页的所有权
 }
 
 impl PageTableEntry {
     pub fn new(ppn: PhysPageNumber, flags: usize) -> Self {
         return Self {
-            bits: (ppn.0 << SV39_PTE_FLAG_BITS) | (flags & ((1<<SV39_PTE_FLAG_BITS) - 1))
-        }
+            bits: (ppn.0 << SV39_PTE_FLAG_BITS) | (flags & ((1 << SV39_PTE_FLAG_BITS) - 1)),
+        };
     }
     pub fn set_ppn(&mut self, ppn: PhysPageNumber) {
-        self.bits = (ppn.0 << SV39_PTE_FLAG_BITS) | (self.bits & ((1<<SV39_PTE_FLAG_BITS)-1));
+        self.bits = (ppn.0 << SV39_PTE_FLAG_BITS) | (self.bits & ((1 << SV39_PTE_FLAG_BITS) - 1));
     }
 
     pub fn set_flags(&mut self, flags: usize) {
         self.bits = self.bits | flags;
     }
     pub fn page_number(&self) -> PhysPageNumber {
-        return PhysPageNumber((self.bits >> SV39_PTE_FLAG_BITS) & ((1<<SV39_PTE_PPN_BITS) - 1));
+        return PhysPageNumber((self.bits >> SV39_PTE_FLAG_BITS) & ((1 << SV39_PTE_PPN_BITS) - 1));
     }
 
     pub fn is_valid(&self) -> bool {
@@ -59,11 +59,11 @@ impl PageTableEntry {
     pub fn is_writable(&self) -> bool {
         return PteFlags::W.bits & self.bits != 0;
     }
-    
+
     pub fn is_readalbe(&self) -> bool {
         return PteFlags::R.bits & self.bits != 0;
     }
-    
+
     pub fn is_executable(&self) -> bool {
         return PteFlags::X.bits & self.bits != 0;
     }
@@ -85,11 +85,17 @@ impl PageTable {
     pub fn new() -> Self {
         let frame = alloc().unwrap();
         // 将frame所有权给pagetable，避免被回收
-        return Self{root_ppn: frame.ppn, frames: vec![frame]};
+        return Self {
+            root_ppn: frame.ppn,
+            frames: vec![frame],
+        };
     }
 
     pub fn from_satp(satp: usize) -> Self {
-        return Self{root_ppn: PhysPageNumber(satp_ppn(satp)), frames: Vec::new()};
+        return Self {
+            root_ppn: PhysPageNumber(satp_ppn(satp)),
+            frames: Vec::new(),
+        };
     }
 
     // 将虚拟页映射到物理页
@@ -105,7 +111,7 @@ impl PageTable {
                 if pte.is_valid() {
                     error!("vpn {} already mapped", vpn.0);
                     panic!("vpn {} already mapped", vpn.0);
-                }else {
+                } else {
                     // 将ppn写入叶子节点的pte
                     pte.set_ppn(ppn);
                     pte.set_flags(flags | PteFlags::V.bits());
@@ -120,17 +126,16 @@ impl PageTable {
                 let old_ppn = current_ppn;
                 current_ppn = frame.ppn;
                 self.frames.push(frame);
-            }else {
+            } else {
                 current_ppn = pte.page_number();
             }
-            level+=1;
+            level += 1;
         }
     }
 
     // 解除虚拟页在当前页表的映射
     pub fn unmap(&mut self, vpn: VirtPageNumber) {
-        self.find_pte(vpn)
-        .map(|pte| {
+        self.find_pte(vpn).map(|pte| {
             *pte = PageTableEntry::new(PhysPageNumber(0), 0);
         });
     }
@@ -143,13 +148,13 @@ impl PageTable {
         let mut i = 0;
         for num in levels {
             pte = &mut ppn.as_ptes()[num];
-            if i == levels.len()-1{
+            if i == levels.len() - 1 {
                 return Some(pte);
             }
             if !pte.is_valid() {
                 debug!("find pte break at level: {}, pte bits: {:#b}", i, pte.bits);
                 break;
-            }else {
+            } else {
                 ppn = pte.page_number();
             }
             i = i + 1;
@@ -166,10 +171,9 @@ impl PageTable {
 
     // 虚拟地址转换物理地址
     pub fn va_to_pa(&self, va: VirtAddr) -> Option<PhysAddr> {
-        return self.find_pte(va.vpn())
-        .map(|pte| {
-            PhysAddr(pte.page_number().base_addr() + va.offset())
-        });
+        return self
+            .find_pte(va.vpn())
+            .map(|pte| PhysAddr(pte.page_number().base_addr() + va.offset()));
     }
 
     pub fn translate(&self, vpn: VirtPageNumber) -> Option<&mut PageTableEntry> {
@@ -178,12 +182,14 @@ impl PageTable {
 
     // 获取SV39页表的satp值
     pub fn satp(&self, asid: usize) -> usize {
-        return self.root_ppn.0 | (asid << SV39_PTE_PPN_BITS) | (SV39_SATP_MODE << (SV39_PTE_PPN_BITS + SV39_SATP_ASID_BITS));
+        return self.root_ppn.0
+            | (asid << SV39_PTE_PPN_BITS)
+            | (SV39_SATP_MODE << (SV39_PTE_PPN_BITS + SV39_SATP_ASID_BITS));
     }
 }
 
 fn satp_ppn(satp: usize) -> usize {
-    return satp & ((1<<SV39_PTE_PPN_BITS) - 1);
+    return satp & ((1 << SV39_PTE_PPN_BITS) - 1);
 }
 
 // 将SV39的27位vpn分割成3个9bits的多级vpn
@@ -194,7 +200,7 @@ fn divide_vpn(vpn: VirtPageNumber) -> [usize; 3] {
     while number > 0 {
         parts[i] = number & 0x1ff;
         number = number >> 9;
-        i = i-1;
+        i = i - 1;
     }
     return parts;
 }

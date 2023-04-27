@@ -1,5 +1,5 @@
+use crate::driver::uart::UART;
 use core::fmt::*;
-use crate::driver::uart::{UART};
 
 pub fn print(args: Arguments) {
     let mut uart = UART.lock();
@@ -54,7 +54,6 @@ macro_rules! error {
         $crate::console::print_str("\n");
     }
 }
-
 
 #[macro_export]
 macro_rules! kernel {

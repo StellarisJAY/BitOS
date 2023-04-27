@@ -1,8 +1,10 @@
-use crate::proc::scheduler::{exit_current_proc, schedule_idle, push_process, current_proc, current_proc_trap_context};
 use crate::proc::pcb::ProcessControlBlock;
+use crate::proc::scheduler::{
+    current_proc, current_proc_trap_context, exit_current_proc, push_process, schedule_idle,
+};
 use alloc::sync::Arc;
 
-pub fn sys_exit(exit_code: i32) -> isize{
+pub fn sys_exit(exit_code: i32) -> isize {
     exit_current_proc(exit_code);
     schedule_idle();
     return 0;

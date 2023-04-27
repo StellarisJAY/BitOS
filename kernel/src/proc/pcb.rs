@@ -1,13 +1,13 @@
-use super::pid::{Pid, alloc_pid};
 use super::context::ProcessContext;
-use alloc::sync::Arc;
+use super::pid::{alloc_pid, Pid};
+use crate::config::*;
+use crate::mem::address::*;
+use crate::mem::memory_set::MemorySet;
+use crate::sync::cell::SafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::user_trap_handler;
-use crate::mem::memory_set::MemorySet;
-use crate::mem::address::*;
-use crate::config::*;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
-use crate::sync::cell::SafeCell;
 use core::cell::RefMut;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -26,12 +26,12 @@ pub struct ProcessControlBlock {
 
 pub struct InnerPCB {
     pub mem_size: usize,
-    pub kernel_stack: usize,                          // 内核栈地址
-    pub context: ProcessContext,                      // 进程上下文
-    pub trap_context: PhysPageNumber,                 // 陷入上下文
-    pub memory_set: MemorySet,                        // 内存集合
-    pub parent: Option<Arc<ProcessControlBlock>>,     // 父进程pcb
-    pub children: Vec<Arc<ProcessControlBlock>>,      // 子进程pcb集合
+    pub kernel_stack: usize,                      // 内核栈地址
+    pub context: ProcessContext,                  // 进程上下文
+    pub trap_context: PhysPageNumber,             // 陷入上下文
+    pub memory_set: MemorySet,                    // 内存集合
+    pub parent: Option<Arc<ProcessControlBlock>>, // 父进程pcb
+    pub children: Vec<Arc<ProcessControlBlock>>,  // 子进程pcb集合
     pub status: ProcessState,
     pub exit_code: i32,
 }
@@ -55,7 +55,7 @@ impl ProcessControlBlock {
         // 映射内核栈
         let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
         crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
-        
+
         let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
         let mut inner = InnerPCB {
             mem_size: data.len(),
@@ -70,8 +70,17 @@ impl ProcessControlBlock {
         };
         // 创建trap ctx
         let trap_ctx = inner.get_trap_context();
-        (*trap_ctx) = TrapContext::user_trap_context(kernel_satp, stack_top, user_trap_handler as usize, entry_point, user_stack_sp);
-        return Self { pid: pid, inner: SafeCell::new(inner) }
+        (*trap_ctx) = TrapContext::user_trap_context(
+            kernel_satp,
+            stack_top,
+            user_trap_handler as usize,
+            entry_point,
+            user_stack_sp,
+        );
+        return Self {
+            pid: pid,
+            inner: SafeCell::new(inner),
+        };
     }
 
     // fork 子进程
@@ -84,7 +93,7 @@ impl ProcessControlBlock {
         let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
         crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
         let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
-        let mut inner = InnerPCB{
+        let mut inner = InnerPCB {
             mem_size: p_inner.mem_size,
             kernel_stack: stack_top,
             context: ProcessContext::switch_ret_context(stack_top), // 空的进程上下文，ra指向user_trap_return，使进程被调度后能够回到U模式
@@ -95,7 +104,7 @@ impl ProcessControlBlock {
             status: ProcessState::Ready,
             exit_code: 0,
         };
-        let pcb = Arc::new(ProcessControlBlock{
+        let pcb = Arc::new(ProcessControlBlock {
             pid: pid,
             inner: SafeCell::new(inner),
         });
@@ -150,6 +159,3 @@ impl ProcessControlBlock {
         return self.pid.0;
     }
 }
-
-
-

@@ -1,5 +1,5 @@
-use lazy_static::lazy_static;
 use alloc::vec::Vec;
+use lazy_static::lazy_static;
 
 extern "C" {
     fn _app_names();
@@ -29,11 +29,14 @@ lazy_static! {
 // 加载kernel地址空间中.data段中的内核应用程序elf数据
 pub fn load_kernel_app(name: &str) -> &[u8] {
     let count = get_app_count();
-    return APP_NAMES.iter().enumerate().find(|(_, n)| {
-        **n == name
-    }).map(|(id, _)| {
-        return load_app(id);
-    }).unwrap();
+    return APP_NAMES
+        .iter()
+        .enumerate()
+        .find(|(_, n)| **n == name)
+        .map(|(id, _)| {
+            return load_app(id);
+        })
+        .unwrap();
 }
 
 fn load_app(id: usize) -> &'static [u8] {

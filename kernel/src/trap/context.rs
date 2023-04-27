@@ -1,4 +1,3 @@
-
 // TrapContext
 // 陷入内核态后用来保存用户态寄存器
 #[repr(C)]
@@ -16,9 +15,25 @@ pub struct TrapContext {
 
 impl TrapContext {
     pub fn empty() -> Self {
-        return Self { kernel_satp: 0, kernel_sp: 0, trap_handler: 0, sepc: 0, sp: 0, ra: 0, t: [0; 7], a: [0; 8], s: [0; 12]};
+        return Self {
+            kernel_satp: 0,
+            kernel_sp: 0,
+            trap_handler: 0,
+            sepc: 0,
+            sp: 0,
+            ra: 0,
+            t: [0; 7],
+            a: [0; 8],
+            s: [0; 12],
+        };
     }
-    pub fn user_trap_context(kernel_satp: usize, kernel_sp: usize, trap_handler: usize, app_entry: usize, user_sp: usize) -> Self {
+    pub fn user_trap_context(
+        kernel_satp: usize,
+        kernel_sp: usize,
+        trap_handler: usize,
+        app_entry: usize,
+        user_sp: usize,
+    ) -> Self {
         return Self {
             kernel_satp: kernel_satp,
             kernel_sp: kernel_sp,
@@ -29,7 +44,6 @@ impl TrapContext {
             t: [0; 7],
             a: [0; 8],
             s: [0; 12],
-        }
+        };
     }
 }
-

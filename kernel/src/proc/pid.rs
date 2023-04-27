@@ -1,7 +1,7 @@
-use alloc::vec::Vec;
-use spin::mutex::SpinMutex;
-use lazy_static::lazy_static;
 use crate::config::MAX_PID;
+use alloc::vec::Vec;
+use lazy_static::lazy_static;
+use spin::mutex::SpinMutex;
 pub struct Pid(pub usize);
 
 pub struct PidAllocator {
@@ -11,7 +11,8 @@ pub struct PidAllocator {
 }
 
 lazy_static! {
-    pub static ref PID_ALLOCATOR: SpinMutex<PidAllocator> = SpinMutex::new(PidAllocator::new(0, MAX_PID));
+    pub static ref PID_ALLOCATOR: SpinMutex<PidAllocator> =
+        SpinMutex::new(PidAllocator::new(0, MAX_PID));
 }
 
 pub fn alloc_pid() -> Option<Pid> {
@@ -26,18 +27,22 @@ impl Drop for Pid {
 
 impl PidAllocator {
     pub fn new(start: usize, end: usize) -> Self {
-        return Self {start: start, end: end, recycled: Vec::new()};
+        return Self {
+            start: start,
+            end: end,
+            recycled: Vec::new(),
+        };
     }
 
     pub fn alloc(&mut self) -> Option<Pid> {
         if !self.recycled.is_empty() {
-            return self.recycled.pop().map(|id| {Pid(id)});
-        }else {
+            return self.recycled.pop().map(|id| Pid(id));
+        } else {
             if self.start > self.end {
                 return None;
             }
             let pid = Pid(self.start);
-            self.start+=1;
+            self.start += 1;
             return Some(pid);
         }
     }

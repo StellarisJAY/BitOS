@@ -1,9 +1,8 @@
-use alloc::vec::Vec;
 use super::address::*;
+use crate::config::PHYS_MEM_LIMIT;
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
-use crate::config::{PHYS_MEM_LIMIT};
-
 
 extern "C" {
     // 内核段结束地址，可分配物理内存的起始地址
@@ -19,7 +18,7 @@ pub trait MemAllocator {
 
 // Frame 物理页帧
 pub struct Frame {
-    pub ppn: PhysPageNumber
+    pub ppn: PhysPageNumber,
 }
 
 // 物理页内存分配器
@@ -45,7 +44,7 @@ pub fn alloc() -> Option<Frame> {
     let mut allocator = ALLOCATOR.lock();
     let ppn = allocator.alloc();
     drop(allocator);
-    return ppn.map(|p|{Frame{ppn: p}});
+    return ppn.map(|p| Frame { ppn: p });
 }
 
 pub fn dealloc(ppn: PhysPageNumber) {
@@ -54,10 +53,13 @@ pub fn dealloc(ppn: PhysPageNumber) {
     drop(allocator);
 }
 
-
 impl MemAllocator for VecAllocator {
     fn new() -> Self {
-        return Self{current_ppn: 0, end_ppn: 0, recycled: Vec::new()};
+        return Self {
+            current_ppn: 0,
+            end_ppn: 0,
+            recycled: Vec::new(),
+        };
     }
     // 初始化物理内存区域，[ekernel,PhysLimit)
     fn init(&mut self) {
@@ -67,15 +69,13 @@ impl MemAllocator for VecAllocator {
     fn alloc(&mut self) -> Option<PhysPageNumber> {
         // 优先分配回收队列中的页
         if !self.recycled.is_empty() {
-            return self.recycled.pop().map(|ppn| {
-                PhysPageNumber(ppn)
-            });
-        }else {
+            return self.recycled.pop().map(|ppn| PhysPageNumber(ppn));
+        } else {
             if self.current_ppn == self.end_ppn {
                 return None;
-            }else {
+            } else {
                 let ppn = self.current_ppn;
-                self.current_ppn+=1;
+                self.current_ppn += 1;
                 return Some(PhysPageNumber(ppn));
             }
         }

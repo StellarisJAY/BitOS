@@ -1,6 +1,6 @@
-use crate::proc::scheduler::current_proc_translate_buffer;
 use crate::console::print_buf;
 use crate::driver::uart::get_char;
+use crate::proc::scheduler::current_proc_translate_buffer;
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -13,8 +13,8 @@ pub fn sys_write(fd: usize, buf_ptr: usize, len: usize) -> isize {
                 print_buf(buf);
             }
             return len as isize;
-        },
-        _ => panic!("unsupported fd for write")
+        }
+        _ => panic!("unsupported fd for write"),
     }
 }
 
@@ -31,8 +31,8 @@ pub fn sys_read(fd: usize, buf_ptr: usize, len: usize) -> isize {
                     }
                 }
             }
-        },
-        _ => panic!("unsupported fd for read")
+        }
+        _ => panic!("unsupported fd for read"),
     }
     0
 }
