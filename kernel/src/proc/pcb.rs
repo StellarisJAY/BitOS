@@ -74,6 +74,37 @@ impl ProcessControlBlock {
         return Self { pid: pid, inner: SafeCell::new(inner) }
     }
 
+    // fork 子进程
+    pub fn fork(parent: Arc<ProcessControlBlock>) -> Arc<ProcessControlBlock> {
+        let pid = alloc_pid().unwrap();
+        let mut p_inner = parent.borrow_inner();
+        let (memset, user_stack_top) = MemorySet::from_parent(&p_inner.memory_set);
+        let kernel_satp = crate::mem::kernel::kernel_satp();
+        // 映射内核栈
+        let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
+        crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
+        let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
+        let mut inner = InnerPCB{
+            mem_size: p_inner.mem_size,
+            kernel_stack: stack_top,
+            context: ProcessContext::switch_ret_context(stack_top), // 空的进程上下文，ra指向user_trap_return，使进程被调度后能够回到U模式
+            trap_context: trap_context_ppn,
+            memory_set: memset,
+            parent: Some(Arc::clone(&parent)),
+            children: Vec::new(),
+            status: ProcessState::Ready,
+            exit_code: 0,
+        };
+        let pcb = Arc::new(ProcessControlBlock{
+            pid: pid,
+            inner: SafeCell::new(inner),
+        });
+        p_inner.children.push(Arc::clone(&pcb));
+        p_inner.memory_set.remove_write_permission();
+        drop(p_inner);
+        return pcb;
+    }
+
     pub fn user_satp(&self) -> usize {
         return self.inner.borrow().memory_set.satp();
     }
