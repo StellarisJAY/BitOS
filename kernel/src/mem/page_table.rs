@@ -43,7 +43,7 @@ impl PageTableEntry {
         }
     }
     pub fn set_ppn(&mut self, ppn: PhysPageNumber) {
-        self.bits = self.bits | (ppn.0 << SV39_PTE_FLAG_BITS);
+        self.bits = (ppn.0 << SV39_PTE_FLAG_BITS) | (self.bits & ((1<<SV39_PTE_FLAG_BITS)-1));
     }
 
     pub fn set_flags(&mut self, flags: usize) {
