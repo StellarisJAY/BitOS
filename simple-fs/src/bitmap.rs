@@ -34,7 +34,7 @@ impl Bitmap {
             // 读取bmap块的数据，转换成BitMapBlock类型
             let bmap_block_id = self.first_bm_block + seq;
             let cache_entry = get_block_cache_entry(bmap_block_id, Arc::clone(&block_device)).unwrap();
-            let bm_block: &mut BitmapBlock = cache_entry.lock().as_mut();
+            let bm_block: &mut BitmapBlock = cache_entry.lock().as_mut(0);
             // 分配块id
             let result = bm_block
                 .bits
@@ -60,7 +60,7 @@ impl Bitmap {
         let bmap_block_id = bmap_seq + self.first_block_id;
         let cache_entry = get_block_cache_entry(bmap_block_id, Arc::clone(&block_device)).unwrap();
         // 将cache的bitmap位设置0，回收块id
-        let bm_block: &mut BitmapBlock = cache_entry.lock().as_mut();
+        let bm_block: &mut BitmapBlock = cache_entry.lock().as_mut(0);
         let b = &mut bm_block.bits[idx];
         (*b) &= !(1<<offset);
         drop(bm_block);
