@@ -16,16 +16,18 @@ pub struct CacheEntry {
 }
 
 pub struct BlockCache {
-    cache_map: BTreeMap<usize, Arc<CacheEntry>>,
+    cache_map: BTreeMap<usize, Arc<Mutex<CacheEntry>>>,
 }
-
 
 lazy_static! {
     pub static ref BLOCK_CACHE: Mutex<BlockCache> = Mutex::new(BlockCache::new());
 }
 
 // get_block_cache_entry 获取一个磁盘块的缓存对象，如果缓存中没有则通过block_device接口读取
-pub fn get_block_cache_entry(block_id: usize, block_device: Arc<dyn BlockDevice>) -> Option<Arc<CacheEntry>> {
+pub fn get_block_cache_entry(
+    block_id: usize,
+    block_device: Arc<dyn BlockDevice>,
+) -> Option<Arc<Mutex<CacheEntry>>> {
     let mut cache = BLOCK_CACHE.lock();
     let entry = cache.get_block(block_id, block_device);
     drop(cache);
@@ -43,7 +45,7 @@ impl BlockCache {
         &mut self,
         block_id: usize,
         block_device: Arc<dyn BlockDevice>,
-    ) -> Option<Arc<CacheEntry>> {
+    ) -> Option<Arc<Mutex<CacheEntry>>> {
         if let Some(entry) = self.cache_map.get(&block_id) {
             return Some(Arc::clone(&entry));
         }
@@ -56,15 +58,17 @@ impl BlockCache {
                 .expect("block cache full");
             let id = *(result.0);
             let entry = Arc::clone(result.1);
-            if entry.modified {
-                entry.block_device.write(id, &entry.block_data);
+            let e = entry.lock();
+            if e.modified {
+                e.block_device.write(id, &e.block_data);
             }
+            drop(e);
             self.cache_map.remove(&id);
         }
         // 从块设备读取数据，创建entry并添加到缓存map
         let mut data = [0u8; BLOCK_SIZE];
         block_device.read(block_id, &mut data);
-        let entry = Arc::new(CacheEntry::new(block_id, data, block_device));
+        let entry = Arc::new(Mutex::new(CacheEntry::new(block_id, data, block_device)));
         self.cache_map.insert(block_id, Arc::clone(&entry));
         return Some(entry);
     }
@@ -83,7 +87,7 @@ impl CacheEntry {
             block_device: block_device,
         }
     }
-    
+
     pub fn sync(&mut self) {
         if self.modified {
             self.block_device.write(self.block_id, &self.block_data);
@@ -91,4 +95,22 @@ impl CacheEntry {
         }
     }
     
+    // 从块缓存的offset位置，获取T类型的不可变引用
+    pub fn as_ref<'a, T: Sized>(&self, offset: usize) -> &'a T {
+        assert!((offset +  core::mem::size_of::<T>()) >= BLOCK_SIZE, "block offset overflow");
+        unsafe {
+            let ptr = self.block_data.as_ptr().add(offset) as usize as *const T;
+            ptr.as_ref().unwrap()
+        }
+    }
+
+    // 从块缓存的offset位置，获取T类型的可变引用，将导致块缓存modified
+    pub fn as_mut<'a, T: Sized>(&mut self, offset: usize) -> &'a mut T {
+        assert!((offset +  core::mem::size_of::<T>()) >= BLOCK_SIZE, "block offset overflow");
+        unsafe {
+            self.modified = true;
+            let ptr = self.block_data.as_ptr().add(offset) as usize as *mut T;
+            ptr.as_mut().unwrap()
+        }
+    }
 }
