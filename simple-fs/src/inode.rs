@@ -50,7 +50,7 @@ fn data_blocks_for_size(size: u32) -> u32 {
 
 fn index_blocks_for_size(size: u32) -> u32 {
     let mut data_blocks = data_blocks_for_size(size);
-    let mut blocks: u32 = 1;
+    let mut blocks: u32 = 0;
     if data_blocks < DIRECT_DATA_BLOCK_COUNT {
         return blocks;
     }
@@ -69,4 +69,18 @@ fn index_blocks_for_size(size: u32) -> u32 {
         blocks += 1;
     } 
     return blocks;
+}
+
+#[allow(unused)]
+pub fn test_blocks_for_size() {
+    const N: usize = 3;
+    let cases: [u32; N] = [86, 3000, 4096 * 1024];
+    let expect_data_blocks: [u32; N] = [1, 1, 1024];
+    let expect_index_blocks: [u32; N] = [0, 0, 1];
+    for (i, c) in cases.iter().enumerate() {
+        let d_blocks = data_blocks_for_size(*c);
+        assert!(expect_data_blocks[i] == d_blocks, "case {} failed, expect d_bloccks: {}, got: {}", i, expect_data_blocks[i], d_blocks);
+        let i_blocks = index_blocks_for_size(*c);
+        assert!(expect_index_blocks[i] == i_blocks, "case {} failed, expect i_bloccks: {}, got: {}", i, expect_index_blocks[i], i_blocks);
+    }
 }
