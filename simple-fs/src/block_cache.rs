@@ -9,14 +9,14 @@ const BLOCK_CACHE_LIMIT: usize = 128;
 
 // CacheFrame 一个块缓存项
 pub struct CacheEntry {
-    block_id: usize,                    // 块id
+    block_id: u32,                    // 块id
     modified: bool,                     // 是否被修改
-    block_data: [u8; BLOCK_SIZE],       // 缓存数据
+    block_data: [u8; BLOCK_SIZE as usize],       // 缓存数据
     block_device: Arc<dyn BlockDevice>, // 块设备接口
 }
 
 pub struct BlockCache {
-    cache_map: BTreeMap<usize, Arc<Mutex<CacheEntry>>>,
+    cache_map: BTreeMap<u32, Arc<Mutex<CacheEntry>>>,
 }
 
 lazy_static! {
@@ -25,7 +25,7 @@ lazy_static! {
 
 // get_block_cache_entry 获取一个磁盘块的缓存对象，如果缓存中没有则通过block_device接口读取
 pub fn get_block_cache_entry(
-    block_id: usize,
+    block_id: u32,
     block_device: Arc<dyn BlockDevice>,
 ) -> Option<Arc<Mutex<CacheEntry>>> {
     let mut cache = BLOCK_CACHE.lock();
@@ -43,7 +43,7 @@ impl BlockCache {
 
     pub fn get_block(
         &mut self,
-        block_id: usize,
+        block_id: u32,
         block_device: Arc<dyn BlockDevice>,
     ) -> Option<Arc<Mutex<CacheEntry>>> {
         if let Some(entry) = self.cache_map.get(&block_id) {
@@ -66,7 +66,7 @@ impl BlockCache {
             self.cache_map.remove(&id);
         }
         // 从块设备读取数据，创建entry并添加到缓存map
-        let mut data = [0u8; BLOCK_SIZE];
+        let mut data = [0u8; BLOCK_SIZE as usize];
         block_device.read(block_id, &mut data);
         let entry = Arc::new(Mutex::new(CacheEntry::new(block_id, data, block_device)));
         self.cache_map.insert(block_id, Arc::clone(&entry));
@@ -76,8 +76,8 @@ impl BlockCache {
 
 impl CacheEntry {
     pub fn new(
-        block_id: usize,
-        data: [u8; BLOCK_SIZE],
+        block_id: u32,
+        data: [u8; BLOCK_SIZE as usize],
         block_device: Arc<dyn BlockDevice>,
     ) -> Self {
         Self {
@@ -96,20 +96,20 @@ impl CacheEntry {
     }
     
     // 从块缓存的offset位置，获取T类型的不可变引用
-    pub fn as_ref<'a, T: Sized>(&self, offset: usize) -> &'a T {
-        assert!((offset +  core::mem::size_of::<T>()) >= BLOCK_SIZE, "block offset overflow");
+    pub fn as_ref<'a, T: Sized>(&self, offset: u32) -> &'a T {
+        assert!((offset +  core::mem::size_of::<T>() as u32) >= BLOCK_SIZE, "block offset overflow");
         unsafe {
-            let ptr = self.block_data.as_ptr().add(offset) as usize as *const T;
+            let ptr = self.block_data.as_ptr().add(offset as usize) as usize as *const T;
             ptr.as_ref().unwrap()
         }
     }
 
     // 从块缓存的offset位置，获取T类型的可变引用，将导致块缓存modified
-    pub fn as_mut<'a, T: Sized>(&mut self, offset: usize) -> &'a mut T {
-        assert!((offset +  core::mem::size_of::<T>()) >= BLOCK_SIZE, "block offset overflow");
+    pub fn as_mut<'a, T: Sized>(&mut self, offset: u32) -> &'a mut T {
+        assert!((offset +  core::mem::size_of::<T>() as u32) >= BLOCK_SIZE, "block offset overflow");
         unsafe {
             self.modified = true;
-            let ptr = self.block_data.as_ptr().add(offset) as usize as *mut T;
+            let ptr = self.block_data.as_ptr().add(offset as usize) as usize as *mut T;
             ptr.as_mut().unwrap()
         }
     }

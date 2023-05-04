@@ -3,8 +3,8 @@ use super::block_device::BlockDevice;
 use super::layout::BLOCK_SIZE;
 use alloc::sync::Arc;
 
-const BITMAP_SIZE: usize = BLOCK_SIZE / 8;
-const ALLOC_PER_BMAP_BLOCK: usize = BLOCK_SIZE * 8;
+const BITMAP_SIZE: usize = BLOCK_SIZE as usize / 8;
+const ALLOC_PER_BMAP_BLOCK: u32 = BLOCK_SIZE * 8;
 
 // BitmapBlock 一个bitmap块，其中每个二进制位表示一个被管理块是否可分配
 // 一个bmap块=4KiB，为512个u64，总共512 * 64 = 32K个id
@@ -15,13 +15,13 @@ struct BitmapBlock {
 }
 
 pub struct Bitmap {
-    first_block_id: usize,  // bitmap管理的区域的第一个块id
-    first_bm_block: usize,  // bitmap的第一个bm块id
-    total_bm_blocks: usize, // bitmap所拥有的bm块总数
+    first_block_id: u32,  // bitmap管理的区域的第一个块id
+    first_bm_block: u32,  // bitmap的第一个bm块id
+    total_bm_blocks: u32, // bitmap所拥有的bm块总数
 }
 
 impl Bitmap {
-    pub fn new(first_block_id: usize, first_bm_block: usize, total_bm_blocks: usize) -> Self {
+    pub fn new(first_block_id: u32, first_bm_block: u32, total_bm_blocks: u32) -> Self {
         return Self {
             first_block_id,
             first_bm_block,
@@ -29,7 +29,7 @@ impl Bitmap {
         };
     }
 
-    pub fn alloc(&mut self, block_device: Arc<dyn BlockDevice>) -> Option<usize> {
+    pub fn alloc(&mut self, block_device: Arc<dyn BlockDevice>) -> Option<u32> {
         for seq in 0..self.total_bm_blocks {
             // 读取bmap块的数据，转换成BitMapBlock类型
             let bmap_block_id = self.first_bm_block + seq;
@@ -44,16 +44,16 @@ impl Bitmap {
                 .map(|(idx, bit)| {
                     let offset = bit.trailing_ones(); // 找到第一个0
                     *bit |= 1u64 << offset;           // 将0设置为1
-                    return (idx, offset as usize);    // 返回第idx个u64的offset位置
+                    return (idx, offset);    // 返回第idx个u64的offset位置
                 });
             if let Some((idx, offset)) = result {
-                return Some(self.compose_block_id(seq, idx, offset));
+                return Some(self.compose_block_id(seq, idx as u32, offset));
             }
         }
         None
     }
     
-    pub fn dealloc(&mut self, block_id: usize, block_device: Arc<dyn BlockDevice>) {
+    pub fn dealloc(&mut self, block_id: u32, block_device: Arc<dyn BlockDevice>) {
         // 获取block_id所在的bmap_block序号，block内的idx 和 u64内的offset
         let (bmap_seq, idx, offset) = self.decompose_block_id(block_id);
         // 获取block cache
@@ -61,22 +61,22 @@ impl Bitmap {
         let cache_entry = get_block_cache_entry(bmap_block_id, Arc::clone(&block_device)).unwrap();
         // 将cache的bitmap位设置0，回收块id
         let bm_block: &mut BitmapBlock = cache_entry.lock().as_mut(0);
-        let b = &mut bm_block.bits[idx];
+        let b = &mut bm_block.bits[idx as usize];
         (*b) &= !(1<<offset);
         drop(bm_block);
     }
 
     // 从bmap序号，bmap块内序号，和u64的offset 获取最终的block_id
-    fn compose_block_id(&self, bmap_seq: usize, idx: usize, offset: usize) -> usize {
+    fn compose_block_id(&self, bmap_seq: u32, idx: u32, offset: u32) -> u32 {
         self.first_block_id + bmap_seq * ALLOC_PER_BMAP_BLOCK + idx * 64 + offset
     }
     
-    fn decompose_block_id(&self, block_id: usize) -> (usize, usize, usize) {
+    fn decompose_block_id(&self, block_id: u32) -> (u32, u32, u32) {
         let mut id = block_id - self.first_block_id;
         let offset = id % 64;
         id /= 64;
-        let idx = id % BITMAP_SIZE;
-        let bmap_seq = id / BITMAP_SIZE;
+        let idx = id % BITMAP_SIZE as u32;
+        let bmap_seq = id / BITMAP_SIZE as u32;
         return (bmap_seq, idx, offset);
     }
 }
