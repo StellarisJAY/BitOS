@@ -9,10 +9,10 @@ const BLOCK_CACHE_LIMIT: usize = 128;
 
 // CacheFrame 一个块缓存项
 pub struct CacheEntry {
-    block_id: u32,                    // 块id
-    modified: bool,                     // 是否被修改
-    block_data: [u8; BLOCK_SIZE as usize],       // 缓存数据
-    block_device: Arc<dyn BlockDevice>, // 块设备接口
+    block_id: u32,                         // 块id
+    modified: bool,                        // 是否被修改
+    block_data: [u8; BLOCK_SIZE as usize], // 缓存数据
+    block_device: Arc<dyn BlockDevice>,    // 块设备接口
 }
 
 pub struct BlockCache {
@@ -94,10 +94,13 @@ impl CacheEntry {
             self.modified = false;
         }
     }
-    
+
     // 从块缓存的offset位置，获取T类型的不可变引用
     pub fn as_ref<'a, T: Sized>(&self, offset: u32) -> &'a T {
-        assert!((offset +  core::mem::size_of::<T>() as u32) >= BLOCK_SIZE, "block offset overflow");
+        assert!(
+            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            "block offset overflow"
+        );
         unsafe {
             let ptr = self.block_data.as_ptr().add(offset as usize) as usize as *const T;
             ptr.as_ref().unwrap()
@@ -106,11 +109,69 @@ impl CacheEntry {
 
     // 从块缓存的offset位置，获取T类型的可变引用，将导致块缓存modified
     pub fn as_mut<'a, T: Sized>(&mut self, offset: u32) -> &'a mut T {
-        assert!((offset +  core::mem::size_of::<T>() as u32) >= BLOCK_SIZE, "block offset overflow");
+        assert!(
+            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            "block offset overflow"
+        );
         unsafe {
             self.modified = true;
             let ptr = self.block_data.as_ptr().add(offset as usize) as usize as *mut T;
             ptr.as_mut().unwrap()
         }
+    }
+
+    // 从块缓存读取数据并转换成T类型，然后执行F函数从T得到R
+    pub fn read<'a, T: 'a + Sized, R: Sized, F: FnOnce(&T) -> R>(&self, offset: u32, f: F) -> R {
+        assert!(
+            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            "block offset overflow"
+        );
+        unsafe {
+            let ptr = self.block_data.as_ptr().add(offset as usize) as usize as *const T;
+            return f(ptr.as_ref().unwrap());
+        }
+    }
+
+    // 从块缓存读取数据并转换成mut T类型，执行函数F处理T并返回
+    pub fn modify<T: Sized, F: FnOnce(&mut T) -> Option<&mut T>>(
+        &mut self,
+        offset: u32,
+        f: F,
+    ) -> Option<&mut T> {
+        assert!(
+            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            "block offset overflow"
+        );
+        unsafe {
+            self.modified = true;
+            let ptr = self.block_data.as_ptr().add(offset as usize) as usize as *mut T;
+            f(ptr.as_mut().unwrap())
+        }
+    }
+}
+
+#[cfg(test)]
+mod block_cache_tests {
+    use super::*;
+    struct BlockDev;
+
+    impl BlockDevice for BlockDev {
+        fn read(&self, _: u32, _: &mut [u8]) {}
+        fn write(&self, _: u32, _: &[u8]) {}
+    }
+
+    #[test]
+    fn test_block_entry_read_write() {
+        let mut cache = CacheEntry::new(0, [0u8; BLOCK_SIZE as usize], Arc::new(BlockDev {}));
+        cache.modify(0, |data: &mut [u8; BLOCK_SIZE as usize]| {
+            data.fill(10);
+            return None;
+        });
+        assert!(cache.modified, "cache should be modified");
+        cache.read(0, |data: &[u8; BLOCK_SIZE as usize]| {
+            data.iter().for_each(|d: &u8| {
+                assert!(*d == 10, "element should be the modified value");
+            });
+        });
     }
 }
