@@ -4,7 +4,7 @@ use super::layout::BLOCK_SIZE;
 use alloc::sync::Arc;
 
 const BITMAP_SIZE: usize = BLOCK_SIZE as usize / 8;
-const ALLOC_PER_BMAP_BLOCK: u32 = BLOCK_SIZE * 8;
+pub const ALLOC_PER_BMAP_BLOCK: u32 = BLOCK_SIZE * 8;
 
 // BitmapBlock 一个bitmap块，其中每个二进制位表示一个被管理块是否可分配
 // 一个bmap块=4KiB，为512个u64，总共512 * 64 = 32K个id
