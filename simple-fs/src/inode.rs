@@ -13,13 +13,10 @@ pub enum InodeType {
 
 pub const INODE_SIZE: u32 = 128;
 const DIRECT_DATA_BLOCK_COUNT: u32 = 24;
-const DIRECT_SIZE: u32 = DIRECT_DATA_BLOCK_COUNT * BLOCK_SIZE as u32;
 const IDX_COUNT_PER_BLOCK: u32 = 1024;
 // 每级索引能够独自映射的data blocks数量
 const IDX1_BLOCK_COUNT: u32 = IDX_COUNT_PER_BLOCK;
 const IDX2_BLOCK_COUNT: u32 = IDX_COUNT_PER_BLOCK * IDX_COUNT_PER_BLOCK;
-// 每级索引能够独自映射的文件大小
-const IDX1_SIZE: u32 = IDX1_BLOCK_COUNT * BLOCK_SIZE as u32;
 const MAX_DATA_BLOCKS: u32 = IDX1_BLOCK_COUNT + IDX2_BLOCK_COUNT + DIRECT_DATA_BLOCK_COUNT;
 
 // 一个inode块，大小128字节
@@ -100,6 +97,123 @@ impl DiskInode {
                 l1[blocks as usize - 1]
             });
     }
+
+    // 文件扩容，需要调用者提供新分配的数据块和索引块
+    pub fn grow(
+        &mut self,
+        size: u32,
+        blocks: Vec<u32>,
+        mut index_blocks: Vec<u32>,
+        block_device: Arc<dyn BlockDevice>,
+    ) {
+        let mut current_seq = self.data_blocks();
+        self.size = size;
+        for b in blocks {
+            // 直接索引
+            if current_seq < DIRECT_DATA_BLOCK_COUNT {
+                self.direct[current_seq as usize] = b;
+            } else if current_seq < IDX1_BLOCK_COUNT {
+                // 一级索引内的偏移
+                let offset1 = (current_seq - DIRECT_DATA_BLOCK_COUNT) as usize;
+                get_block_cache_entry(self.index1, Arc::clone(&block_device))
+                    .unwrap()
+                    .lock()
+                    .modify(0, |idx1: &mut [u32; IDX_COUNT_PER_BLOCK as usize]| {
+                        idx1[offset1] = b;
+                    });
+            } else {
+                // 从零开始的二级序号，二级索引内的偏移，二级索引对应的一级索引的偏移
+                let idx2_seq = current_seq - DIRECT_DATA_BLOCK_COUNT - IDX1_BLOCK_COUNT;
+                let offset2 = (idx2_seq / IDX_COUNT_PER_BLOCK) as usize;
+                let offset1 = (idx2_seq % IDX_COUNT_PER_BLOCK) as usize;
+                // 获取二级索引内的一级索引块ID
+                let idx1_block_id = get_block_cache_entry(self.index2, Arc::clone(&block_device))
+                    .unwrap()
+                    .lock()
+                    .modify(0, |idx2: &mut [u32; IDX_COUNT_PER_BLOCK as usize]| {
+                        let mut id = idx2[offset2];
+                        // 一级索引块不存在，需要分配新的块
+                        if idx2[offset2] == 0 {
+                            id = index_blocks.pop().unwrap();
+                            idx2[offset2] = id;
+                        }
+                        return id;
+                    });
+                // 修改一级索引内对应偏移的块id
+                get_block_cache_entry(idx1_block_id, Arc::clone(&block_device))
+                    .unwrap()
+                    .lock()
+                    .modify(0, |idx1: &mut [u32; IDX_COUNT_PER_BLOCK as usize]| {
+                        idx1[offset1] = b;
+                    });
+            }
+            current_seq += 1;
+        }
+    }
+    // 从inode索引的数据块里面读取从offset开始的size大小数据
+    pub fn read(&self, offset: u32, size: u32, buf: &mut [u8], block_device: Arc<dyn BlockDevice>) {
+        if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
+            panic!("read out of range");
+        }
+        let mut cur_block_seq = offset / BLOCK_SIZE;
+        let mut cur_block_off = offset % BLOCK_SIZE;
+        let mut cur_block_end = BLOCK_SIZE; // 非最后一个块的结束位置是BLOCK_SIZE
+        let last_block_seq = (offset + size) / BLOCK_SIZE;
+        let last_block_off = (offset + size) % BLOCK_SIZE;
+        let mut buf_off = 0;
+        while cur_block_seq <= last_block_seq {
+            // 最后一个块的块内的结束位置
+            if cur_block_seq == last_block_seq {
+                cur_block_end = last_block_off;
+            }
+            // 获取当前块序号对应的数据块缓存
+            let block_id = self.get_block_id(cur_block_seq, Arc::clone(&block_device));
+            get_block_cache_entry(block_id, Arc::clone(&block_device))
+                .unwrap()
+                .lock()
+                .read(0, |block: &[u8; BLOCK_SIZE as usize]| {
+                    // 拷贝数据到buf中
+                    let range = &block[cur_block_off as usize..cur_block_end as usize];
+                    buf[buf_off..buf_off + range.len()].copy_from_slice(range);
+                    buf_off += range.len();
+                });
+            cur_block_seq += 1;
+            cur_block_off = 0;
+        }
+    }
+
+    // 向inode索引的数据块的offset位置写入大小为size的数据
+    pub fn write(&self, offset: u32, size: u32, buf: &[u8], block_device: Arc<dyn BlockDevice>) {
+        if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
+            panic!("read out of range");
+        }
+        let mut cur_block_seq = offset / BLOCK_SIZE;
+        let mut cur_block_off = offset % BLOCK_SIZE;
+        let mut cur_block_end = BLOCK_SIZE; // 非最后一个块的结束位置是BLOCK_SIZE
+        let last_block_seq = (offset + size) / BLOCK_SIZE;
+        let last_block_off = (offset + size) % BLOCK_SIZE;
+        let mut buf_off: usize = 0;
+        while cur_block_seq <= last_block_seq {
+            // 最后一个块的块内的结束位置
+            if cur_block_seq == last_block_seq {
+                cur_block_end = last_block_off;
+            }
+            // 获取块序号对应的数据块缓存
+            let block_id = self.get_block_id(cur_block_seq, Arc::clone(&block_device));
+            get_block_cache_entry(block_id, Arc::clone(&block_device))
+                .unwrap()
+                .lock()
+                .modify(0, |block: &mut [u8; BLOCK_SIZE as usize]| {
+                    // 将buf中的数据拷贝到块缓存中
+                    let length = (cur_block_end - cur_block_off) as usize;
+                    block[cur_block_off as usize..cur_block_end as usize]
+                        .copy_from_slice(&buf[buf_off..buf_off + length]);
+                    buf_off += length;
+                });
+            cur_block_seq += 1;
+            cur_block_off = 0;
+        }
+    }
 }
 
 fn data_blocks_for_size(size: u32) -> u32 {
@@ -157,5 +271,10 @@ mod inode_tests {
                 i_blocks
             );
         }
+    }
+
+    #[test]
+    fn test_block_id_from_offset() {
+        let node = DiskInode::new(InodeType::File);
     }
 }
