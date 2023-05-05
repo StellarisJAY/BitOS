@@ -121,7 +121,12 @@ impl CacheEntry {
     }
 
     // 从块缓存读取数据并转换成T类型，然后执行F函数从T得到R
-    pub fn read<'a, T: 'a + Sized, R: Sized, F: FnOnce(&T) -> R>(&self, offset: u32, f: F) -> R {
+    pub fn read<T, V, F>(&self, offset: u32, f: F) -> V
+    where
+        T: Sized,
+        V: Sized,
+        F: FnOnce(&T) -> V,
+    {
         assert!(
             (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
             "block offset overflow"
@@ -133,11 +138,12 @@ impl CacheEntry {
     }
 
     // 从块缓存读取数据并转换成mut T类型，执行函数F处理T并返回
-    pub fn modify<T: Sized, F: FnOnce(&mut T) -> Option<&mut T>>(
-        &mut self,
-        offset: u32,
-        f: F,
-    ) -> Option<&mut T> {
+    pub fn modify<T, V, F>(&mut self, offset: u32, f: F) -> V
+    where
+        T: Sized,
+        V: Sized,
+        F: FnOnce(&mut T) -> V,
+    {
         assert!(
             (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
             "block offset overflow"
@@ -165,7 +171,6 @@ mod block_cache_tests {
         let mut cache = CacheEntry::new(0, [0u8; BLOCK_SIZE as usize], Arc::new(BlockDev {}));
         cache.modify(0, |data: &mut [u8; BLOCK_SIZE as usize]| {
             data.fill(10);
-            return None;
         });
         assert!(cache.modified, "cache should be modified");
         cache.read(0, |data: &[u8; BLOCK_SIZE as usize]| {
