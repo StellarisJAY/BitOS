@@ -8,8 +8,8 @@ use arch::riscv::register::*;
 use config::CPUS;
 use core::arch::asm;
 use core::arch::global_asm;
-use proc::cpuid;
 use riscv::register::*;
+use task::scheduler::cpuid;
 extern crate alloc;
 
 #[macro_use]
@@ -110,7 +110,7 @@ pub unsafe fn rust_main() {
     } else {
         while KERNEL_INITED.load(Ordering::SeqCst) == 0 {}
     }
-    proc::scheduler::schedule();
+    task::scheduler::schedule();
 }
 
 #[panic_handler]

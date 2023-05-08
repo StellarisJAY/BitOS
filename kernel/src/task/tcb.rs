@@ -1,12 +1,15 @@
 use super::context::TaskContext;
 use crate::config::{task_trap_context_position, task_user_stack_position, PAGE_SIZE};
 use crate::mem::address::*;
-use crate::mem::kernel::{map_kernel_stack, unmap_kernel_stack};
+use crate::mem::kernel::{kernel_satp, map_kernel_stack, unmap_kernel_stack};
 use crate::mem::kernel_stack::{alloc_kstack, kernel_stack_position, KernelStack};
 use crate::mem::memory_set::{MapMode::Indirect, MemPermission, MemoryArea};
 use crate::proc::pcb::ProcessControlBlock;
 use crate::sync::cell::SafeCell;
+use crate::trap::context::TrapContext;
+use crate::trap::user_trap_handler;
 use alloc::sync::{Arc, Weak};
+use alloc::vec::Vec;
 
 #[derive(PartialEq, Eq)]
 pub enum TaskStatus {
@@ -18,7 +21,7 @@ pub enum TaskStatus {
 // 内核线程控制块
 pub struct TaskControlBlock {
     pub kernel_stack: KernelStack, // 内核栈地址
-    inner: SafeCell<TaskControlBlockInner>,
+    pub inner: SafeCell<TaskControlBlockInner>,
 }
 
 pub struct TaskControlBlockInner {
@@ -32,28 +35,82 @@ pub struct TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    pub fn new(process: Arc<ProcessControlBlock>) -> Self {
+    pub fn new(process: Arc<ProcessControlBlock>, entry_point: usize) -> Self {
+        let tid = process.alloc_tid();
         let kstask = alloc_kstack().unwrap();
         let (kstack_bottom, kstack_top) = kernel_stack_position(kstask.0);
         let stack_base = process.stack_base;
-        let inner = TaskControlBlockInner::new(Arc::clone(&process), stack_base, kstack_bottom);
+        let (ustack_bottom, ustack_top) = task_user_stack_position(stack_base, tid);
+        let inner = TaskControlBlockInner::new(
+            Arc::clone(&process),
+            tid,
+            ustack_bottom,
+            ustack_top,
+            kstack_top,
+        );
         map_kernel_stack(kstack_bottom, kstack_top);
-        Self {
+        debug!("app kernel stack: {:#x}, {:#x}", kstack_bottom, kstack_top);
+        let tcb = Self {
             kernel_stack: kstask,
             inner: SafeCell::new(inner),
+        };
+        let trap_ctx = tcb.trap_context();
+        *trap_ctx = TrapContext::user_trap_context(
+            kernel_satp(),
+            kstack_top,
+            user_trap_handler as usize,
+            entry_point,
+            ustack_top,
+        );
+        return tcb;
+    }
+
+    // 转换虚拟地址buffer到物理页集合
+    pub fn translate_buffer<'a>(&self, addr: usize, len: usize) -> Vec<&'a mut [u8]> {
+        let inner = self.inner.borrow();
+        let proc = inner.process.upgrade().unwrap();
+        proc.translate_buffer(addr, len)
+    }
+    // 获取进程上下文的虚拟地址
+    pub fn context_addr(&self) -> usize {
+        let mut inner = self.inner.borrow();
+        let addr = &mut inner.task_context as *mut TaskContext as usize;
+        drop(inner);
+        return addr;
+    }
+
+    pub fn trap_context<'a>(&self) -> &'a mut TrapContext {
+        unsafe {
+            let inner = self.inner.borrow();
+            let ctx = inner.trap_ctx_ppn.base_addr() as usize as *mut TrapContext;
+            drop(inner);
+            return ctx.as_mut().unwrap();
         }
+    }
+
+    pub fn trap_context_addr(&self) -> usize {
+        return self.inner.borrow().trap_ctx_ppn.base_addr();
+    }
+
+    pub fn user_satp(&self) -> usize {
+        self.inner.borrow().process.upgrade().unwrap().user_satp()
     }
 }
 
 impl TaskControlBlockInner {
     // 创建inner线程控制块
-    pub fn new(process: Arc<ProcessControlBlock>, stack_base: usize, kernel_stack: usize) -> Self {
-        let tid = process.alloc_tid();
-        let (stack_bottom, stack_top) = task_user_stack_position(stack_base, tid);
+    pub fn new(
+        process: Arc<ProcessControlBlock>,
+        tid: usize,
+        ustack_bottom: usize,
+        ustack_top: usize,
+        kstack_sp: usize,
+    ) -> Self {
         let trap_context = task_trap_context_position(tid);
         Self::map_memory(
             Arc::clone(&process),
-            (stack_bottom, stack_top),
+            ustack_bottom,
+            ustack_top,
             trap_context,
         );
         let trap_ctx_ppn = process
@@ -63,23 +120,28 @@ impl TaskControlBlockInner {
             .unwrap();
         Self {
             tid: tid,
-            stack: stack_bottom,
+            stack: ustack_bottom,
             process: Arc::downgrade(&process),
             trap_ctx_ppn: trap_ctx_ppn,
-            task_context: TaskContext::switch_ret_context(kernel_stack),
+            task_context: TaskContext::switch_ret_context(kstack_sp),
             status: TaskStatus::Ready,
             exit_code: None,
         }
     }
 
     // 映射线程的栈和trap上下文
-    fn map_memory(process: Arc<ProcessControlBlock>, user_stack: (usize, usize), trap_ctx: usize) {
+    fn map_memory(
+        process: Arc<ProcessControlBlock>,
+        ustack_bottom: usize,
+        ustack_top: usize,
+        trap_ctx: usize,
+    ) {
         let mem_set = &mut process.borrow_inner().memory_set;
         // user stack
         mem_set.insert_area(
             MemoryArea::new(
-                VirtAddr(user_stack.0).vpn(),
-                VirtAddr(user_stack.1).vpn(),
+                VirtAddr(ustack_bottom).vpn(),
+                VirtAddr(ustack_top).vpn(),
                 Indirect,
                 MemPermission::R.bits() | MemPermission::W.bits() | MemPermission::U.bits(),
             ),
@@ -87,8 +149,8 @@ impl TaskControlBlockInner {
         );
         mem_set.insert_area(
             MemoryArea::new(
-                VirtAddr(trap_context).vpn(),
-                VirtAddr(trap_context + PAGE_SIZE).vpn(),
+                VirtAddr(trap_ctx).vpn(),
+                VirtAddr(trap_ctx + PAGE_SIZE).vpn(),
                 Indirect,
                 MemPermission::R.bits() | MemPermission::W.bits(),
             ),

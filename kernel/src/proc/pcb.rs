@@ -1,12 +1,11 @@
-use super::context::ProcessContext;
 use super::pid::{alloc_pid, Pid};
 use crate::config::*;
 use crate::mem::address::*;
 use crate::mem::memory_set::MemorySet;
 use crate::sync::cell::SafeCell;
+use crate::task::scheduler::{add_process, push_task};
+use crate::task::tcb::TaskControlBlock;
 use crate::task::tid::TidAllocator;
-use crate::trap::context::TrapContext;
-use crate::trap::user_trap_handler;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cell::RefMut;
@@ -28,89 +27,64 @@ pub struct ProcessControlBlock {
 
 pub struct InnerPCB {
     pub mem_size: usize,
-    pub kernel_stack: usize,                      // 内核栈地址
-    pub context: ProcessContext,                  // 进程上下文
-    pub trap_context: PhysPageNumber,             // 陷入上下文
     pub memory_set: MemorySet,                    // 内存集合
     pub parent: Option<Arc<ProcessControlBlock>>, // 父进程pcb
     pub children: Vec<Arc<ProcessControlBlock>>,  // 子进程pcb集合
     pub status: ProcessState,
     pub exit_code: i32,
     pub tid_allocator: TidAllocator,
-}
-
-impl InnerPCB {
-    pub fn get_trap_context(&mut self) -> &mut TrapContext {
-        unsafe {
-            let ptr = self.trap_context.base_addr() as *mut TrapContext;
-            ptr.as_mut().unwrap()
-        }
-    }
+    pub tasks: Vec<Arc<TaskControlBlock>>,
 }
 
 impl ProcessControlBlock {
     // 从elf数据创建PCB
-    pub fn from_elf_data(data: &[u8]) -> Self {
+    pub fn from_elf_data(data: &[u8]) {
         let pid = alloc_pid().unwrap();
         // 从elf数据创建用户地址空间
-        let (memset, entry_point, user_stack_sp, stack_base) = MemorySet::from_elf_data(data);
+        let (memset, entry_point, stack_base) = MemorySet::from_elf_data(data);
         let kernel_satp = crate::mem::kernel::kernel_satp();
-        // 映射内核栈
-        let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
-        crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
 
         let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
         let mut inner = InnerPCB {
             mem_size: data.len(),
-            kernel_stack: stack_top,
-            context: ProcessContext::switch_ret_context(stack_top), // 空的进程上下文，ra指向user_trap_return，使进程被调度后能够回到U模式
-            trap_context: trap_context_ppn,
             memory_set: memset,
             parent: None,
             children: Vec::new(),
             status: ProcessState::Ready,
             exit_code: 0,
             tid_allocator: TidAllocator::new(0, 128),
+            tasks: Vec::with_capacity(64), // todo 最大线程数量
         };
-        // 创建trap ctx
-        let trap_ctx = inner.get_trap_context();
-        (*trap_ctx) = TrapContext::user_trap_context(
-            kernel_satp,
-            stack_top,
-            user_trap_handler as usize,
-            entry_point,
-            user_stack_sp,
-        );
-        return Self {
+        let proc = Arc::new(Self {
             pid: pid,
             stack_base: stack_base,
             inner: SafeCell::new(inner),
-        };
+        });
+        // 创建main线程，然后将main线程交给调度器
+        let task = Arc::new(TaskControlBlock::new(Arc::clone(&proc), entry_point));
+        push_task(Arc::clone(&task));
+        proc.inner.borrow().tasks.push(task);
+        add_process(proc);
     }
 
     // fork 子进程
     pub fn fork(parent: Arc<ProcessControlBlock>) -> Arc<ProcessControlBlock> {
         let pid = alloc_pid().unwrap();
         let mut p_inner = parent.borrow_inner();
-        let (memset, user_stack_top) = MemorySet::from_parent(&p_inner.memory_set);
+        let memset = MemorySet::from_parent(&p_inner.memory_set);
         let kernel_satp = crate::mem::kernel::kernel_satp();
-        // 映射内核栈
-        let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
-        crate::mem::kernel::map_kernel_stack(stack_bottom, stack_top);
-        let trap_context_ppn = memset.vpn_to_ppn(VirtAddr(TRAP_CONTEXT).vpn()).unwrap();
         let mut inner = InnerPCB {
             mem_size: p_inner.mem_size,
-            kernel_stack: stack_top,
-            context: ProcessContext::switch_ret_context(stack_top), // 空的进程上下文，ra指向user_trap_return，使进程被调度后能够回到U模式
-            trap_context: trap_context_ppn,
             memory_set: memset,
             parent: Some(Arc::clone(&parent)),
             children: Vec::new(),
             status: ProcessState::Ready,
             exit_code: 0,
             tid_allocator: TidAllocator::new(0, 128), // todo 子进程的线程分配器
+            tasks: Vec::with_capacity(64),            // todo 最大线程数量
         };
         let pcb = Arc::new(ProcessControlBlock {
+            stack_base: parent.stack_base,
             pid: pid,
             inner: SafeCell::new(inner),
         });
@@ -135,26 +109,6 @@ impl ProcessControlBlock {
         let res = inner.memory_set.translate_buffer(addr, len);
         drop(inner);
         return res;
-    }
-    // 获取进程上下文的虚拟地址
-    pub fn context_addr(&self) -> usize {
-        let mut inner = self.inner.borrow();
-        let addr = &mut inner.context as *mut ProcessContext as usize;
-        drop(inner);
-        return addr;
-    }
-
-    pub fn trap_context(&self) -> &'static mut TrapContext {
-        unsafe {
-            let inner = self.inner.borrow();
-            let ctx = inner.trap_context.base_addr() as usize as *mut TrapContext;
-            drop(inner);
-            return ctx.as_mut().unwrap();
-        }
-    }
-
-    pub fn trap_context_addr(&self) -> usize {
-        return self.inner.borrow().trap_context.base_addr();
     }
 
     pub fn borrow_inner(&self) -> RefMut<'_, InnerPCB> {

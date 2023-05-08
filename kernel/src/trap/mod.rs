@@ -1,9 +1,9 @@
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::mem::address::VirtAddr;
-use crate::proc::scheduler::{
-    current_proc, current_proc_satp, current_proc_trap_addr, current_proc_trap_context,
-};
 use crate::syscall::handle_syscall;
+use crate::task::scheduler::{
+    current_task, current_task_satp, current_task_trap_addr, current_task_trap_context,
+};
 use context::TrapContext;
 use core::arch::asm;
 use riscv::register::scause::Exception::*;
@@ -30,7 +30,7 @@ pub fn trap_init() {
 
 #[no_mangle]
 pub unsafe fn user_trap_handler() {
-    let mut ctx = current_proc_trap_context();
+    let mut ctx = current_task_trap_context();
     let scause = scause::read();
     let val = stval::read();
     match scause.cause() {
@@ -40,7 +40,7 @@ pub unsafe fn user_trap_handler() {
             ctx.sepc += 4;
             let ret = handle_syscall(ctx.a[7], [ctx.a[0], ctx.a[1], ctx.a[2]]);
             // 因为syscall可能切换了另一个进程，所以这里要重新获取ctx
-            ctx = current_proc_trap_context();
+            ctx = current_task_trap_context();
             ctx.a[0] = ret as usize;
         }
         Exception(IllegalInstruction) => {
@@ -58,11 +58,14 @@ pub unsafe fn user_trap_handler() {
         // 由machine模式时间中断处理器抛出的S模式软件中断
         Interrupt(SupervisorSoft) => {}
         Exception(StorePageFault) => {
-            let proc = current_proc();
-            if !proc.copy_on_write(VirtAddr(val).vpn()) {
-                kernel!("store page fault, va: {:#x}", val);
-                panic!("store page fault");
-            }
+            // todo copy on write
+            //            let task = current_task();
+            //            if !task.copy_on_write(VirtAddr(val).vpn()) {
+            //                kernel!("store page fault, va: {:#x}", val);
+            //                panic!("store page fault");
+            //            }
+            kernel!("store page fault, va: {:#x}", val);
+            panic!("store page fault");
         }
         _ => {
             kernel!("{:?}, stval: {:#x}", scause.cause(), val);
@@ -97,7 +100,7 @@ pub fn user_trap_return() {
         fn _user_vec();
     }
     let user_ret_va = _user_ret as usize - _user_vec as usize + TRAMPOLINE;
-    let satp = current_proc_satp();
+    let satp = current_task_satp();
     let trap_context = TRAP_CONTEXT;
     unsafe {
         // 设置User模式trap处理器
