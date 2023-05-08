@@ -70,3 +70,16 @@ pub fn fork() -> isize {
 pub fn yield_() {
     syscall::yield_();
 }
+
+pub fn create_thread(entry: usize, args: usize) -> isize {
+    syscall::create_thread(entry, args)
+}
+
+pub fn wait_tid(tid: isize) -> isize {
+    loop {
+        match syscall::wait_tid(tid) {
+            -2 => yield_(),
+            exit_code => return exit_code,
+        }
+    }
+}

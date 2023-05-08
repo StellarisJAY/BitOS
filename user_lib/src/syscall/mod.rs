@@ -8,6 +8,9 @@ const SYSCALL_YIELD: usize = 124;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
 
+const SYSCALL_CREATE_THREAD: usize = 1000;
+const SYSCALL_WAITTID: usize = 1001;
+
 // ecall 系统调用
 fn ecall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
@@ -39,4 +42,12 @@ pub fn fork() -> isize {
 
 pub fn yield_() -> isize {
     ecall(SYSCALL_YIELD, [0usize;3])
+}
+
+pub fn create_thread(entry: usize, args: usize) -> isize {
+    ecall(SYSCALL_CREATE_THREAD, [entry, args, 0])
+}
+
+pub fn wait_tid(tid: isize) -> isize {
+    ecall(SYSCALL_WAITTID, [tid as usize, 0, 0])
 }
