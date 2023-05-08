@@ -42,32 +42,16 @@ impl MemorySet {
                 max_vpn = end_va.vpn().0;
             }
         }
-        // 在高地址映射用户栈
-        let (stack_bottom, stack_top) = user_stack_position();
-        // 映射用户栈，trampoline， trap上下文
-        memset.map_app_common_areas(stack_bottom, stack_top);
-        return (memset, elf.ehdr.e_entry as usize, stack_top);
+        memset.map_trampoline();
+        // 用户空间的线程栈底：elf段之后的第一个页
+        let stack_base = VirtPageNumber(max_vpn + 1).base_addr();
+        return (memset, elf.ehdr.e_entry as usize, stack_base);
     }
 
     // 从父进程地址空间构建子进程地址空间
-    pub fn from_parent(parent: &MemorySet) -> (MemorySet, usize) {
+    pub fn from_parent(parent: &MemorySet) -> Self {
         let mut memset = Self::new();
-        let (stack_bottom, stack_top) = user_stack_position();
-        let (stack_bottom_vpn, trap_context_vpn) =
-            (VirtAddr(stack_bottom).vpn(), VirtAddr(TRAP_CONTEXT).vpn());
         parent.areas.iter().for_each(|area| {
-            // trap上下文直接复制父进程的
-            if area.start_vpn == trap_context_vpn {
-                let ppn = parent.page_table.vpn_to_ppn(trap_context_vpn).unwrap();
-                let area = MemoryArea::new(
-                    trap_context_vpn,
-                    VirtPageNumber(trap_context_vpn.0 + 1),
-                    MapMode::Indirect,
-                    area.perm,
-                );
-                memset.insert_area(area, Some(ppn.as_bytes()));
-                return;
-            }
             let mut child_area =
                 MemoryArea::new(area.start_vpn, area.end_vpn, area.mode, area.perm);
             // 将子进程的memset的vpn映射到父进程的物理页，并设置不可写（write触发PageFault，实现CopyOnWrite）
@@ -85,7 +69,7 @@ impl MemorySet {
 
         // 子进程的栈与父进程相同，所以
         memset.map_trampoline();
-        return (memset, stack_top);
+        return memset;
     }
 
     // 删除可写权限，使写父进程和子进程写内存触发PageFault，然后在trap中进行CopyOnWrite
@@ -128,31 +112,6 @@ impl MemorySet {
             break;
         }
         return vpn_valid;
-    }
-
-    // 映射app通用的区域：用户栈、trampoline、trap上下文
-    pub fn map_app_common_areas(&mut self, stack_bottom: usize, stack_top: usize) {
-        self.insert_area(
-            MemoryArea::new(
-                VirtAddr(stack_bottom).vpn(),
-                VirtAddr(stack_top).vpn(),
-                MapMode::Indirect,
-                MemPermission::R.bits() | MemPermission::W.bits() | MemPermission::U.bits(), // 用户栈设置U mode，只允许用户模式访问
-            ),
-            None,
-        );
-        // 映射Trampoline
-        self.map_trampoline();
-        // 映射TrapContext
-        self.insert_area(
-            MemoryArea::new(
-                VirtAddr(TRAP_CONTEXT).vpn(),
-                VirtAddr(TRAP_CONTEXT + PAGE_SIZE).vpn(),
-                MapMode::Indirect,
-                MemPermission::R.bits() | MemPermission::W.bits(),
-            ),
-            None,
-        ); // trap_ctx 只在Supervisor访问，不设置U mode
     }
 }
 
