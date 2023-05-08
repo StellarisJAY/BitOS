@@ -97,6 +97,23 @@ impl MemorySet {
         self.areas.push(area);
     }
 
+    pub fn remove_area(&mut self, start_vpn: VirtPageNumber) {
+        // 删除area
+        let mut areas = self
+            .areas
+            .drain_filter(|area| area.start_vpn == start_vpn)
+            .collect::<Vec<_>>();
+        areas.iter_mut().map(|area| {
+            for vpn in area.start_vpn.0..area.end_vpn.0 {
+                let vpn = VirtPageNumber(vpn);
+                // 释放area中的每个frame
+                area.frames.remove(&vpn);
+                // 在页表解除映射
+                self.page_table.unmap(vpn);
+            }
+        });
+    }
+
     pub fn map_trampoline(&mut self) {
         extern "C" {
             fn strampoline();
