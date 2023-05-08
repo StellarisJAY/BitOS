@@ -3,6 +3,7 @@ pub mod allocator;
 pub mod app;
 pub mod heap;
 pub mod kernel;
+pub mod kernel_stack;
 pub mod memory_set;
 pub mod page_table;
 

@@ -53,6 +53,11 @@ pub fn map_kernel_stack(bottom: usize, top: usize) {
     drop(memset);
 }
 
+pub fn unmap_kernel_stack(bottom: usize) {
+    let mut memset = KERNEL_MEMSET.lock();
+    memset.remove_area(VirtAddr(bottom).vpn());
+}
+
 #[allow(unused)]
 pub fn kernel_memset_translate(vpn: VirtPageNumber) -> Option<PhysPageNumber> {
     let memset = KERNEL_MEMSET.lock();
