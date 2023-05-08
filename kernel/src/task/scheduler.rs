@@ -1,7 +1,7 @@
 use super::context::TaskContext;
 use super::tcb::{TaskControlBlock, TaskStatus};
 use crate::arch::riscv::register::read_tp;
-use crate::config::CPUS;
+use crate::config::{task_trap_context_position, CPUS};
 use crate::proc::pcb::ProcessControlBlock;
 use crate::proc::pid::Pid;
 use crate::sync::cell::SafeCell;
@@ -80,7 +80,9 @@ pub fn schedule_idle() {
 
 pub fn exit_current_task(exit_code: i32) {
     let task = current_task();
-    let inner = task.inner.borrow();
+    let mut inner = task.inner.borrow();
+    inner.exit_code = Some(exit_code as isize);
+    inner.status = TaskStatus::Exit;
     // 是main线程，退出进程
     if inner.tid == 0 {
         let proc = inner.process.upgrade().unwrap();
@@ -106,13 +108,9 @@ pub fn current_task_trap_context<'a>() -> &'a mut TrapContext {
     return processor.borrow().current_task().unwrap().trap_context();
 }
 
-pub fn current_task_trap_addr() -> usize {
-    let processor = PROCESSORS.get(cpuid()).unwrap();
-    return processor
-        .borrow()
-        .current_task()
-        .unwrap()
-        .trap_context_addr();
+pub fn current_task_trap_va() -> usize {
+    let tid = current_task().tid;
+    task_trap_context_position(tid)
 }
 
 pub fn current_task_satp() -> usize {

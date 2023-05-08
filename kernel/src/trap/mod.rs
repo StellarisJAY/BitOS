@@ -2,7 +2,7 @@ use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::mem::address::VirtAddr;
 use crate::syscall::handle_syscall;
 use crate::task::scheduler::{
-    current_task, current_task_satp, current_task_trap_addr, current_task_trap_context,
+    current_task, current_task_satp, current_task_trap_context, current_task_trap_va,
 };
 use context::TrapContext;
 use core::arch::asm;
@@ -101,7 +101,7 @@ pub fn user_trap_return() {
     }
     let user_ret_va = _user_ret as usize - _user_vec as usize + TRAMPOLINE;
     let satp = current_task_satp();
-    let trap_context = TRAP_CONTEXT;
+    let trap_context = current_task_trap_va();
     unsafe {
         // 设置User模式trap处理器
         stvec::write(TRAMPOLINE, stvec::TrapMode::Direct);
