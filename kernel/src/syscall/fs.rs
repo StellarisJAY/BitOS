@@ -1,6 +1,6 @@
 use crate::console::print_buf;
 use crate::driver::uart::get_char;
-use crate::proc::scheduler::current_proc_translate_buffer;
+use crate::task::scheduler::current_task_translate_buffer;
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -8,7 +8,7 @@ const FD_STDOUT: usize = 1;
 pub fn sys_write(fd: usize, buf_ptr: usize, len: usize) -> isize {
     match fd {
         FD_STDOUT => {
-            let buffers = current_proc_translate_buffer(buf_ptr, len);
+            let buffers = current_task_translate_buffer(buf_ptr, len);
             for buf in buffers {
                 print_buf(buf);
             }
@@ -22,7 +22,7 @@ pub fn sys_read(fd: usize, buf_ptr: usize, len: usize) -> isize {
     match fd {
         FD_STDIN => {
             assert!(len == 1, "currently only supports one byte per read");
-            let mut buf = current_proc_translate_buffer(buf_ptr, len);
+            let mut buf = current_task_translate_buffer(buf_ptr, len);
             loop {
                 if let Some(byte) = get_char() {
                     unsafe {
