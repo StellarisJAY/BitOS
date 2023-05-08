@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
+#![feature(drain_filter)]
 #![allow(unused)]
 use arch::riscv::register::*;
 use config::CPUS;
@@ -20,6 +21,7 @@ mod mem;
 mod proc;
 mod sync;
 mod syscall;
+mod task;
 mod trap;
 
 global_asm!(include_str!("asm/entry.S"));

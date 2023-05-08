@@ -4,6 +4,7 @@ use crate::config::*;
 use crate::mem::address::*;
 use crate::mem::memory_set::MemorySet;
 use crate::sync::cell::SafeCell;
+use crate::task::tid::TidAllocator;
 use crate::trap::context::TrapContext;
 use crate::trap::user_trap_handler;
 use alloc::sync::Arc;
@@ -21,6 +22,7 @@ pub enum ProcessState {
 
 pub struct ProcessControlBlock {
     pid: Pid,
+    pub stack_base: usize,
     inner: SafeCell<InnerPCB>,
 }
 
@@ -34,6 +36,7 @@ pub struct InnerPCB {
     pub children: Vec<Arc<ProcessControlBlock>>,  // 子进程pcb集合
     pub status: ProcessState,
     pub exit_code: i32,
+    pub tid_allocator: TidAllocator,
 }
 
 impl InnerPCB {
@@ -50,7 +53,7 @@ impl ProcessControlBlock {
     pub fn from_elf_data(data: &[u8]) -> Self {
         let pid = alloc_pid().unwrap();
         // 从elf数据创建用户地址空间
-        let (memset, entry_point, user_stack_sp) = MemorySet::from_elf_data(data);
+        let (memset, entry_point, user_stack_sp, stack_base) = MemorySet::from_elf_data(data);
         let kernel_satp = crate::mem::kernel::kernel_satp();
         // 映射内核栈
         let (stack_bottom, stack_top) = kernel_stack_position(pid.0);
@@ -67,6 +70,7 @@ impl ProcessControlBlock {
             children: Vec::new(),
             status: ProcessState::Ready,
             exit_code: 0,
+            tid_allocator: TidAllocator::new(0, 128),
         };
         // 创建trap ctx
         let trap_ctx = inner.get_trap_context();
@@ -79,6 +83,7 @@ impl ProcessControlBlock {
         );
         return Self {
             pid: pid,
+            stack_base: stack_base,
             inner: SafeCell::new(inner),
         };
     }
@@ -103,6 +108,7 @@ impl ProcessControlBlock {
             children: Vec::new(),
             status: ProcessState::Ready,
             exit_code: 0,
+            tid_allocator: TidAllocator::new(0, 128), // todo 子进程的线程分配器
         };
         let pcb = Arc::new(ProcessControlBlock {
             pid: pid,
@@ -157,5 +163,13 @@ impl ProcessControlBlock {
 
     pub fn pid(&self) -> usize {
         return self.pid.0;
+    }
+
+    pub fn alloc_tid(&self) -> usize {
+        self.borrow_inner().tid_allocator.alloc().unwrap()
+    }
+
+    pub fn dealloc_tid(&self, tid: usize) {
+        self.borrow_inner().tid_allocator.dealloc(tid);
     }
 }
