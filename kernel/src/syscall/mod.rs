@@ -1,5 +1,6 @@
 pub mod fs;
 pub mod proc;
+pub mod task;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
@@ -8,6 +9,9 @@ const SYSCALL_FORK: usize = 220;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
+
+const SYSCALL_CREATE_THREAD: usize = 1000;
+const SYSCALL_WAIT_TID: usize = 1001;
 
 pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
     match id {
@@ -22,6 +26,11 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         SYSCALL_FORK => {
             return proc::sys_fork() as isize;
         }
-        _ => panic!("unsupported syscall"),
+        SYSCALL_CREATE_THREAD => return task::create_thread(args[0]) as isize,
+        SYSCALL_WAIT_TID => return task::wait_tid(args[0]),
+        _ => {
+            debug!("unsupported syscall: {}", id);
+            panic!("unsupported syscall");
+        }
     }
 }

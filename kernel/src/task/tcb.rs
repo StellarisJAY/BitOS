@@ -20,6 +20,7 @@ pub enum TaskStatus {
 
 // 内核线程控制块
 pub struct TaskControlBlock {
+    pub tid: usize,
     pub kernel_stack: KernelStack, // 内核栈地址
     pub inner: SafeCell<TaskControlBlockInner>,
 }
@@ -49,8 +50,8 @@ impl TaskControlBlock {
             kstack_top,
         );
         map_kernel_stack(kstack_bottom, kstack_top);
-        debug!("app kernel stack: {:#x}, {:#x}", kstack_bottom, kstack_top);
         let tcb = Self {
+            tid: tid,
             kernel_stack: kstask,
             inner: SafeCell::new(inner),
         };
@@ -94,6 +95,10 @@ impl TaskControlBlock {
 
     pub fn user_satp(&self) -> usize {
         self.inner.borrow().process.upgrade().unwrap().user_satp()
+    }
+
+    pub fn tid(&self) -> usize {
+        self.tid
     }
 }
 
