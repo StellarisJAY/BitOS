@@ -98,20 +98,23 @@ impl MemorySet {
     }
 
     pub fn remove_area(&mut self, start_vpn: VirtPageNumber) {
-        // 删除area
-        let mut areas = self
+        let index = self
             .areas
-            .drain_filter(|area| area.start_vpn == start_vpn)
-            .collect::<Vec<_>>();
-        areas.iter_mut().map(|area| {
-            for vpn in area.start_vpn.0..area.end_vpn.0 {
-                let vpn = VirtPageNumber(vpn);
-                // 释放area中的每个frame
-                area.frames.remove(&vpn);
-                // 在页表解除映射
-                self.page_table.unmap(vpn);
-            }
-        });
+            .iter_mut()
+            .enumerate()
+            .find(|(_, area)| area.start_vpn == start_vpn)
+            .map(|(i, area)| {
+                for vpn in area.start_vpn.0..area.end_vpn.0 {
+                    let vpn = VirtPageNumber(vpn);
+                    // 释放area中的每个frame
+                    area.frames.remove(&vpn);
+                    // 在页表解除映射
+                    self.page_table.unmap(vpn);
+                }
+                return i;
+            })
+            .unwrap();
+        self.areas.remove(index);
     }
 
     pub fn map_trampoline(&mut self) {
@@ -168,15 +171,5 @@ impl MemorySet {
             vpn += 1;
         }
         return buffers;
-    }
-}
-
-// 在debug监控MemoryArea的所有权丢失
-impl Drop for MemoryArea {
-    fn drop(&mut self) {
-        debug!(
-            "memory area {}, {} dropped",
-            self.start_vpn.0, self.end_vpn.0
-        );
     }
 }
