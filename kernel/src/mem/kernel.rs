@@ -39,7 +39,7 @@ pub fn switch_to_kernel_space() {
 }
 
 // 映射一个用户进程的内核栈
-pub fn map_kernel_stack(bottom: usize, top: usize) {
+pub fn map_kernel_stack(bottom: usize, top: usize, data: Option<&[u8]>) {
     let mut memset = KERNEL_MEMSET.lock();
     memset.insert_area(
         MemoryArea::new(
@@ -48,7 +48,7 @@ pub fn map_kernel_stack(bottom: usize, top: usize) {
             MapMode::Indirect, // 内核栈在高地址空间，已经超出物理地址范围，使用间接映射
             MemPermission::R.bits() | MemPermission::W.bits(),
         ),
-        None,
+        data,
     );
     drop(memset);
 }
