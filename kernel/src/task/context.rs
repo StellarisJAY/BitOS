@@ -24,4 +24,12 @@ impl TaskContext {
             s: [0; 12],
         };
     }
+
+    pub fn clone(&self) -> Self {
+        return Self {
+            ra: self.ra,
+            sp: self.sp,
+            s: self.s.clone(),
+        };
+    }
 }

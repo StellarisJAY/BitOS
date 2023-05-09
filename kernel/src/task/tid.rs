@@ -4,9 +4,9 @@ use spin::mutex::SpinMutex;
 
 // TID分配器，每个进程有一个独立的分配器
 pub struct TidAllocator {
-    start: usize,
-    end: usize,
-    recycled: Vec<usize>,
+    pub start: usize,
+    pub end: usize,
+    pub recycled: Vec<usize>,
 }
 
 impl TidAllocator {
@@ -16,6 +16,14 @@ impl TidAllocator {
             end: end,
             recycled: Vec::new(),
         };
+    }
+
+    pub fn clone(&self) -> Self {
+        TidAllocator {
+            start: self.start,
+            end: self.end,
+            recycled: self.recycled.clone(),
+        }
     }
 
     pub fn alloc(&mut self) -> Option<usize> {
