@@ -1,6 +1,7 @@
 use crate::proc::pcb::ProcessControlBlock;
 use crate::task::scheduler::{
-    current_task, current_task_trap_context, exit_current_task, push_task, schedule_idle,
+    add_process, current_task, current_task_trap_context, exit_current_task, push_task,
+    schedule_idle,
 };
 use alloc::sync::Arc;
 
@@ -18,6 +19,9 @@ pub fn sys_yield() -> isize {
 }
 
 pub fn sys_fork() -> usize {
-    // todo fork
-    0
+    let task = current_task();
+    let parent = task.inner.borrow().process.upgrade().unwrap();
+    let child = ProcessControlBlock::fork(Arc::clone(&parent), task.tid);
+    add_process(Arc::clone(&child));
+    child.pid()
 }

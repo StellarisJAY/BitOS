@@ -58,14 +58,11 @@ pub unsafe fn user_trap_handler() {
         // 由machine模式时间中断处理器抛出的S模式软件中断
         Interrupt(SupervisorSoft) => {}
         Exception(StorePageFault) => {
-            // todo copy on write
-            //            let task = current_task();
-            //            if !task.copy_on_write(VirtAddr(val).vpn()) {
-            //                kernel!("store page fault, va: {:#x}", val);
-            //                panic!("store page fault");
-            //            }
-            kernel!("store page fault, va: {:#x}", val);
-            panic!("store page fault");
+            let pcb = current_task().inner.borrow().process.upgrade().unwrap();
+            if !pcb.copy_on_write(VirtAddr(val).vpn()) {
+                kernel!("store page fault, va: {:#x}", val);
+                panic!("store page fault");
+            }
         }
         _ => {
             kernel!("{:?}, stval: {:#x}", scause.cause(), val);

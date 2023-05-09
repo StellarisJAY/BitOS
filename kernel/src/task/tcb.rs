@@ -1,17 +1,21 @@
 use super::context::TaskContext;
 use crate::config::{task_trap_context_position, task_user_stack_position, PAGE_SIZE};
 use crate::mem::address::*;
-use crate::mem::kernel::{kernel_satp, map_kernel_stack, unmap_kernel_stack};
+use crate::mem::allocator::Frame;
+use crate::mem::kernel::{
+    kernel_memset_translate, kernel_satp, map_kernel_stack, unmap_kernel_stack,
+};
 use crate::mem::kernel_stack::{alloc_kstack, kernel_stack_position, KernelStack};
 use crate::mem::memory_set::{MapMode::Indirect, MemPermission, MemoryArea};
 use crate::proc::pcb::ProcessControlBlock;
 use crate::sync::cell::SafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::user_trap_handler;
+use alloc::collections::BTreeMap;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TaskStatus {
     Ready,
     Running,
@@ -49,7 +53,7 @@ impl TaskControlBlock {
             ustack_top,
             kstack_top,
         );
-        map_kernel_stack(kstack_bottom, kstack_top);
+        map_kernel_stack(kstack_bottom, kstack_top, None);
         let tcb = Self {
             tid: tid,
             kernel_stack: kstask,
@@ -64,6 +68,87 @@ impl TaskControlBlock {
             ustack_top,
         );
         return tcb;
+    }
+
+    pub fn fork_child_task(
+        process: Arc<ProcessControlBlock>,
+        parent: Arc<TaskControlBlock>,
+        parent_pcb: Arc<ProcessControlBlock>,
+    ) -> Self {
+        let p_inner = parent.inner.borrow();
+        // 分配新的内核栈
+        let kstack = alloc_kstack().unwrap();
+        let (kstack_bottom, kstack_top) = kernel_stack_position(kstack.0);
+        let (p_kstack_bottom, _) = kernel_stack_position(parent.kernel_stack.0);
+        let p_memset = &parent_pcb.borrow_inner().memory_set;
+        // 映射内核栈并拷贝父进程的数据
+        let kstack_data = kernel_memset_translate(VirtAddr(p_kstack_bottom).vpn())
+            .unwrap()
+            .as_bytes();
+        map_kernel_stack(kstack_bottom, kstack_top, Some(kstack_data));
+        // 映射用户栈
+        let (ustack_bottom, ustack_top) = task_user_stack_position(process.stack_base, parent.tid);
+        p_memset
+            .areas
+            .iter()
+            .find(|area| area.start_vpn.base_addr() == ustack_bottom) // 找到父进程的用户栈MemoryArea
+            .map(|area| {
+                let memset = &mut process.borrow_inner().memory_set;
+                let mut frames: BTreeMap<VirtPageNumber, Arc<Frame>> = BTreeMap::new();
+                for (vpn, frame) in area.frames.iter() {
+                    // 在页表直接将子进程的用户栈映射到父进程的物理页
+                    memset.page_table.map(
+                        VirtPageNumber(vpn.0),
+                        frame.ppn,
+                        MemPermission::R.bits() | MemPermission::U.bits(), // 去除写权限，使PageFault触发COW
+                    );
+                    frames.insert(VirtPageNumber(vpn.0), Arc::clone(frame)); // 增加一个frame的引用
+                }
+                memset.areas.push(MemoryArea {
+                    start_vpn: area.start_vpn,
+                    end_vpn: area.end_vpn,
+                    mode: Indirect,
+                    perm: area.perm,
+                    frames: frames,
+                });
+            });
+        // 映射并拷贝trap上下文
+        let trap_ctx_vpn = VirtAddr(task_trap_context_position(p_inner.tid)).vpn();
+        let trap_ctx_data = p_memset
+            .translate(trap_ctx_vpn)
+            .unwrap()
+            .page_number()
+            .as_bytes();
+        process.borrow_inner().memory_set.insert_area(
+            MemoryArea::new(
+                trap_ctx_vpn,
+                VirtPageNumber(trap_ctx_vpn.0 + 1),
+                Indirect,
+                MemPermission::R.bits() | MemPermission::W.bits(),
+            ),
+            Some(&trap_ctx_data),
+        );
+
+        let trap_ctx_ppn = process
+            .borrow_inner()
+            .memory_set
+            .translate(trap_ctx_vpn)
+            .unwrap()
+            .page_number();
+        let inner_tcb = TaskControlBlockInner {
+            tid: parent.tid,
+            stack: ustack_bottom,
+            process: Arc::downgrade(&process),
+            task_context: p_inner.task_context.clone(),
+            trap_ctx_ppn: trap_ctx_ppn,
+            status: p_inner.status,
+            exit_code: None,
+        };
+        return Self {
+            tid: p_inner.tid,
+            kernel_stack: kstack,
+            inner: SafeCell::new(inner_tcb),
+        };
     }
 
     // 转换虚拟地址buffer到物理页集合
@@ -165,11 +250,14 @@ impl TaskControlBlockInner {
     // 回收线程资源
     fn dealloc_reasource(&self) {
         let proc = self.process.upgrade().unwrap();
-        let mem_set = &mut proc.borrow_inner().memory_set;
+        let mut inner_pcb = proc.borrow_inner();
         let trap_context = task_trap_context_position(self.tid);
         // 解除栈和trap上下文的映射
-        mem_set.remove_area(VirtAddr(self.stack).vpn());
-        mem_set.remove_area(VirtAddr(trap_context).vpn());
+        inner_pcb.memory_set.remove_area(VirtAddr(self.stack).vpn());
+        inner_pcb
+            .memory_set
+            .remove_area(VirtAddr(trap_context).vpn());
+        drop(inner_pcb);
         // 回收tid
         proc.dealloc_tid(self.tid);
     }

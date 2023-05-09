@@ -3,6 +3,7 @@ use super::allocator::alloc;
 use super::memory_set::*;
 use super::page_table::*;
 use crate::config::*;
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT_BOTTOM};
 use alloc::sync::Arc;
 use alloc::vec;
 use elf::endian::AnyEndian;
@@ -12,10 +13,14 @@ const PT_LOAD: u32 = 1;
 
 // 应用程序虚拟地址空间布局：
 //
-// | .text | .data | heap ... stack | trap_ctx | trampoline |
+// | .text | .data | heap | stacks... | trap_ctx ... | trampoline |
 // heap大小固定，stack从高地址逆向增长
-// trap虚拟地址固定，U切换S时保存寄存器
+// stacks: 每个线程都有一个用户栈，位置 = base + tid * stack_size
+// trap_ctx: 每个线程独有的陷入上下文，从高地址向低地址按tid逆向排列
 // trampoline在虚拟页最高页，映射到.trampoline代码段
+// kstask: 每个线程有一个内核栈，内核栈由内核的全局id分配，与tid无关
+//
+// memory set 只包括了进程相关的内存区域初始化，线程的栈和上下文映射在tcb创建时完成
 impl MemorySet {
     // 从app的elf文件创建内存集合
     pub fn from_elf_data(data: &[u8]) -> (Self, usize, usize) {
@@ -49,9 +54,15 @@ impl MemorySet {
     }
 
     // 从父进程地址空间构建子进程地址空间
-    pub fn from_parent(parent: &MemorySet) -> Self {
+    // 由于引入了线程，只有调用fork的线程会被拷贝，所以这里不拷贝任何栈和trap上下文
+    pub fn from_parent(parent: &MemorySet, stack_base: usize) -> Self {
         let mut memset = Self::new();
         parent.areas.iter().for_each(|area| {
+            // 跳过ustack和trap_ctx
+            let area_start = area.start_vpn.base_addr();
+            if area_start < TRAMPOLINE && area_start >= stack_base {
+                return;
+            }
             let mut child_area =
                 MemoryArea::new(area.start_vpn, area.end_vpn, area.mode, area.perm);
             // 将子进程的memset的vpn映射到父进程的物理页，并设置不可写（write触发PageFault，实现CopyOnWrite）
@@ -139,19 +150,12 @@ fn set_unwritable(flags: usize) -> usize {
 pub fn app_map_test(satp: usize) {
     debug!("testing app map");
     let page_table = PageTable::from_satp(satp);
-    let (stack_bottom, _) = user_stack_position();
-    // 测试用例：.text, entry_point, trap_ctx, user_stack
-    let cases = vec![
-        0x10200,
-        0x10208,
-        TRAP_CONTEXT,
-        stack_bottom + PAGE_SIZE,
-        TRAMPOLINE,
-    ];
-    let expect_exec = vec![true, true, false, false, true];
-    let expect_read = vec![true, true, true, true, true];
-    let expect_write = vec![false, false, true, true, false];
-    let expect_umode = vec![true, true, false, true, false];
+    // 测试用例：.text, entry_point, trap_ctx
+    let cases = vec![0x10200, 0x10208, TRAP_CONTEXT, TRAMPOLINE];
+    let expect_exec = vec![true, true, false, true];
+    let expect_read = vec![true, true, true, true];
+    let expect_write = vec![false, false, true, false];
+    let expect_umode = vec![true, true, false, false];
 
     for (i, case) in cases.iter().enumerate() {
         let pte = page_table.translate(VirtAddr(*case).vpn()).unwrap();

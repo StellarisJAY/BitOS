@@ -52,8 +52,8 @@ impl ProcessControlBlock {
             children: Vec::new(),
             status: ProcessState::Ready,
             exit_code: 0,
-            tid_allocator: TidAllocator::new(0, 128),
-            tasks: Vec::with_capacity(64), // todo 最大线程数量
+            tid_allocator: TidAllocator::new(0, MAX_THREADS),
+            tasks: Vec::with_capacity(MAX_THREADS),
         };
         let proc = Arc::new(Self {
             pid: pid,
@@ -68,11 +68,12 @@ impl ProcessControlBlock {
     }
 
     // fork 子进程
-    pub fn fork(parent: Arc<ProcessControlBlock>) -> Arc<ProcessControlBlock> {
+    pub fn fork(parent: Arc<ProcessControlBlock>, tid: usize) -> Arc<ProcessControlBlock> {
         let pid = alloc_pid().unwrap();
         let mut p_inner = parent.borrow_inner();
-        let memset = MemorySet::from_parent(&p_inner.memory_set);
+        let memset = MemorySet::from_parent(&p_inner.memory_set, parent.stack_base);
         let kernel_satp = crate::mem::kernel::kernel_satp();
+
         let mut inner = InnerPCB {
             mem_size: p_inner.mem_size,
             memory_set: memset,
@@ -80,8 +81,8 @@ impl ProcessControlBlock {
             children: Vec::new(),
             status: ProcessState::Ready,
             exit_code: 0,
-            tid_allocator: TidAllocator::new(0, 128), // todo 子进程的线程分配器
-            tasks: Vec::with_capacity(64),            // todo 最大线程数量
+            tid_allocator: p_inner.tid_allocator.clone(),
+            tasks: Vec::new(),
         };
         let pcb = Arc::new(ProcessControlBlock {
             stack_base: parent.stack_base,
@@ -90,7 +91,26 @@ impl ProcessControlBlock {
         });
         p_inner.children.push(Arc::clone(&pcb));
         p_inner.memory_set.remove_write_permission();
+
+        // 获取调用fork的线程tcb
+        let mut parent_task: Option<Arc<TaskControlBlock>> = None;
+        for task in p_inner.tasks.iter() {
+            if task.tid() == tid {
+                parent_task = Some(Arc::clone(task));
+                break;
+            }
+        }
+        // fork_child_task之前必须释放父进程的inner
         drop(p_inner);
+        // 复制当前线程，将该线程加入子进程
+        let child_task = Arc::new(TaskControlBlock::fork_child_task(
+            Arc::clone(&pcb),
+            parent_task.unwrap(),
+            Arc::clone(&parent),
+        ));
+        pcb.borrow_inner().tasks.push(Arc::clone(&child_task));
+        // 提交线程给调度器
+        push_task(Arc::clone(&child_task));
         return pcb;
     }
 
@@ -125,5 +145,11 @@ impl ProcessControlBlock {
 
     pub fn dealloc_tid(&self, tid: usize) {
         self.borrow_inner().tid_allocator.dealloc(tid);
+    }
+}
+
+impl Drop for ProcessControlBlock {
+    fn drop(&mut self) {
+        debug!("process {} dropped", self.pid.0);
     }
 }
