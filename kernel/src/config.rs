@@ -20,19 +20,10 @@ pub const MAX_PID: usize = 1 << 15;
 pub const MAX_KSTACKS: usize = 1024;
 // 内核栈区域底部地址
 pub const KERNEL_STACK_BOTTOM: usize = TRAMPOLINE - MAX_KSTACKS * (KERNEL_STACK_SIZE + GUARD_PAGE);
-
-// 用户进程的内核栈位置
-pub fn kernel_stack_position(pid: usize) -> (usize, usize) {
-    let stack_top = TRAMPOLINE - pid * (KERNEL_STACK_SIZE + GUARD_PAGE);
-    let stack_bottom = stack_top - KERNEL_STACK_SIZE;
-    return (stack_bottom, stack_top);
-}
-
-pub fn user_stack_position() -> (usize, usize) {
-    let stack_top = TRAP_CONTEXT;
-    let stack_bottom = stack_top - USER_STACK_SIZE;
-    return (stack_bottom, stack_top);
-}
+// 最大线程数量
+pub const MAX_THREADS: usize = 64;
+// 每个应用程序地址空间的trap区域基址
+pub const TRAP_CONTEXT_BOTTOM: usize = TRAMPOLINE - MAX_THREADS * PAGE_SIZE;
 
 // 获取线程在用户空间的trap_context地址
 pub fn task_trap_context_position(tid: usize) -> usize {
