@@ -23,13 +23,13 @@ pub fn wait_tid(tid: usize) -> isize {
             let inner = tcb.inner.borrow();
             if inner.status == TaskStatus::Exit {
                 match inner.exit_code {
-                    None => 0,
-                    Some(code) => code,
-                };
+                    None => return 0,
+                    Some(code) => return code,
+                }
             } else {
                 return -2;
             }
         }
     }
-    return -2;
+    return -3;
 }
