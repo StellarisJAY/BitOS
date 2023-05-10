@@ -38,7 +38,7 @@ pub struct InnerPCB {
 
 impl ProcessControlBlock {
     // 从elf数据创建PCB
-    pub fn from_elf_data(data: &[u8]) {
+    pub fn from_elf_data(data: &[u8]) -> Arc<ProcessControlBlock> {
         let pid = alloc_pid().unwrap();
         // 从elf数据创建用户地址空间
         let (memset, entry_point, stack_base) = MemorySet::from_elf_data(data);
@@ -64,7 +64,9 @@ impl ProcessControlBlock {
         let task = Arc::new(TaskControlBlock::new(Arc::clone(&proc), entry_point));
         push_task(Arc::clone(&task));
         proc.inner.borrow().tasks.push(task);
+        let res = Arc::clone(&proc);
         add_process(proc);
+        return res;
     }
 
     // fork 子进程

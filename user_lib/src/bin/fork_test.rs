@@ -3,27 +3,17 @@
 
 #[macro_use]
 extern crate user_lib;
-use user_lib::{fork, yield_};
+use user_lib::{fork, wait_pid, exit};
 #[no_mangle]
 pub fn main() -> i32 {
     println!("[parent] fork test begin");
     let p1 = fork();
     if p1 == 0 {
-        println!("[child] i am child 1");
-        return 0;
+        println!("[child] i am child");
+        exit(-1);
     }else {
-        println!("[parent] child1 pid: {}", p1);
-        println!("[parent] i yield");
-        yield_();
-        println!("[parent] parent recovered");
-        let p2 = fork();
-        if p2 == 0 {
-            println!("[child] i am child2");
-            println!("[child] i yield");
-            println!("[child] child2 recovered");
-        }else {
-            println!("[parent] child2 pid: {}", p2);
-        }
+        let exit_code = wait_pid(p1 as usize);
+        println!("[parent] p1 exit code: {}", exit_code);
     }
     return 0;
 }

@@ -27,7 +27,7 @@ lazy_static! {
 }
 
 // 加载kernel地址空间中.data段中的内核应用程序elf数据
-pub fn load_kernel_app(name: &str) -> &[u8] {
+pub fn load_kernel_app(name: &str) -> Option<&[u8]> {
     let count = get_app_count();
     return APP_NAMES
         .iter()
@@ -35,11 +35,10 @@ pub fn load_kernel_app(name: &str) -> &[u8] {
         .find(|(_, n)| **n == name)
         .map(|(id, _)| {
             return load_app(id);
-        })
-        .unwrap();
+        });
 }
 
-fn load_app(id: usize) -> &'static [u8] {
+fn load_app<'a>(id: usize) -> &'a [u8] {
     unsafe {
         let mut ptr = _app_addrs as usize as *mut usize;
         let start_addr = ptr.add(id + 1).read_volatile();

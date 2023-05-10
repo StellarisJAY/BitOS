@@ -10,6 +10,7 @@ const SYSCALL_YIELD: usize = 124;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
 
+const SYSCALL_SPAWN: usize = 1220;
 const SYSCALL_CREATE_THREAD: usize = 1000;
 const SYSCALL_WAIT_TID: usize = 1001;
 
@@ -28,6 +29,8 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         }
         SYSCALL_CREATE_THREAD => return task::create_thread(args[0]) as isize,
         SYSCALL_WAIT_TID => return task::wait_tid(args[0]),
+        SYSCALL_WAITPID => return proc::sys_waitpid(args[0]),
+        SYSCALL_SPAWN => return proc::sys_spawn(args[0], args[1]),
         _ => {
             debug!("unsupported syscall: {}", id);
             panic!("unsupported syscall");

@@ -32,6 +32,11 @@ pub fn main() -> i32 {
                     break;
                 }
                 put_char(b'\n');
+                if let Some(pid) = user_lib::spawn(cmd.as_str()) {
+                    user_lib::wait_pid(pid);
+                }else {
+                    println!("command not found");
+                }
                 cmd.clear();
                 print!(">>> ");
             },

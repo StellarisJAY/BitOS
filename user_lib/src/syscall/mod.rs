@@ -7,6 +7,7 @@ const SYSCALL_FORK: usize = 220;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
+const SYSCALL_SPAWN: usize = 1220;
 
 const SYSCALL_CREATE_THREAD: usize = 1000;
 const SYSCALL_WAITTID: usize = 1001;
@@ -44,10 +45,18 @@ pub fn yield_() -> isize {
     ecall(SYSCALL_YIELD, [0usize;3])
 }
 
+pub fn wait_pid(pid: usize) -> isize {
+    ecall(SYSCALL_WAITPID, [pid, 0, 0])
+}
+
 pub fn create_thread(entry: usize, args: usize) -> isize {
     ecall(SYSCALL_CREATE_THREAD, [entry, args, 0])
 }
 
 pub fn wait_tid(tid: isize) -> isize {
     ecall(SYSCALL_WAITTID, [tid as usize, 0, 0])
+}
+
+pub fn spawn(buf: &[u8]) -> isize {
+    ecall(SYSCALL_SPAWN, [buf.as_ptr() as usize, buf.len(), 0])
 }
