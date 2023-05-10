@@ -2,7 +2,7 @@ use super::context::TaskContext;
 use super::tcb::{TaskControlBlock, TaskStatus};
 use crate::arch::riscv::register::read_tp;
 use crate::config::{task_trap_context_position, CPUS};
-use crate::proc::pcb::ProcessControlBlock;
+use crate::proc::pcb::{ProcessControlBlock, ProcessState};
 use crate::proc::pid::Pid;
 use crate::sync::cell::SafeCell;
 use crate::trap::context::TrapContext;
@@ -89,6 +89,17 @@ pub fn exit_current_task(exit_code: i32) {
         let mut inner_pcb = proc.borrow_inner();
         inner_pcb.exit_code = exit_code;
         inner_pcb.tasks.clear();
+        // 子进程变成僵尸进程，等待父进程wait回收资源
+        if let Some(parent) = &inner_pcb.parent {
+            inner_pcb.status = ProcessState::Zombie;
+        } else {
+            inner_pcb.status = ProcessState::Exit;
+            // 没有父进程，删除PCB的所有权，回收资源
+            remove_process(proc.pid());
+        }
+        inner_pcb.children.iter_mut().for_each(|child| {
+            child.borrow_inner().parent = None;
+        });
         drop(inner_pcb);
         drop(proc);
     }
@@ -138,6 +149,14 @@ pub fn add_process(process: Arc<ProcessControlBlock>) {
 
 pub fn remove_process(pid: usize) {
     MANAGER.lock().processes.remove(&pid);
+}
+
+pub fn find_process(pid: usize) -> Option<Arc<ProcessControlBlock>> {
+    MANAGER
+        .lock()
+        .processes
+        .get(&pid)
+        .map(|pcb| Arc::clone(pcb))
 }
 
 impl TaskManager {
