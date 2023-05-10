@@ -28,6 +28,7 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         }
         SYSCALL_CREATE_THREAD => return task::create_thread(args[0]) as isize,
         SYSCALL_WAIT_TID => return task::wait_tid(args[0]),
+        SYSCALL_WAITPID => return proc::sys_waitpid(args[0]),
         _ => {
             debug!("unsupported syscall: {}", id);
             panic!("unsupported syscall");

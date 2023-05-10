@@ -44,6 +44,10 @@ pub fn yield_() -> isize {
     ecall(SYSCALL_YIELD, [0usize;3])
 }
 
+pub fn wait_pid(pid: usize) -> isize {
+    ecall(SYSCALL_WAITPID, [pid, 0, 0])
+}
+
 pub fn create_thread(entry: usize, args: usize) -> isize {
     ecall(SYSCALL_CREATE_THREAD, [entry, args, 0])
 }

@@ -71,6 +71,15 @@ pub fn yield_() {
     syscall::yield_();
 }
 
+pub fn wait_pid(pid: usize) -> isize {
+    loop {
+        match syscall::wait_pid(pid) {
+            -2 => yield_(),
+            exit_code => return exit_code,
+        }
+    }
+}
+
 pub fn create_thread(entry: usize, args: usize) -> isize {
     syscall::create_thread(entry, args)
 }
