@@ -15,7 +15,7 @@ const DL: u8 = 0x7f;
 
 #[no_mangle]
 pub fn main() -> i32 {
-    println!("entered user shell");
+    println!("User shell entered, input \"help\" to list available commands...");
     print!(">>> ");
     let mut cmd = String::new();
     loop {
