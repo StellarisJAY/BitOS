@@ -71,6 +71,15 @@ pub fn yield_() {
     syscall::yield_();
 }
 
+pub fn spawn(name: &str) -> Option<usize> {
+    let buf = name.as_bytes();
+    let res = syscall::spawn(buf);
+    if res == -1 {
+        return None;
+    }
+    return Some(res as usize);
+}
+
 pub fn wait_pid(pid: usize) -> isize {
     loop {
         match syscall::wait_pid(pid) {
