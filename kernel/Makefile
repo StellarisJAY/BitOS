@@ -2,7 +2,7 @@ TOOL = "riscv64-unknown-elf-"
 TARGET = "./target/riscv64gc-unknown-none-elf/release/"
 ELF = $(TARGET)kernel
 BIN = $(TARGET)kernel.bin
-CPUS = 4
+CPUS = 1
 QEMU = qemu-system-riscv64
 QEMU_OPTS = -machine virt \
 	    -bios none \
