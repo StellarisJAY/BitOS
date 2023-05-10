@@ -21,6 +21,14 @@ pub fn print_buf(buf: &[u8]) {
     drop(uart);
 }
 
+pub fn debug(args: Arguments) {
+    if crate::config::DEBUG_MODE {
+        print_str("[debug] ");
+        print(args);
+        print_str("\n");
+    }
+}
+
 pub fn print_banner() {
     let banner = "______ _________________________
 ___  /____(_)_  /__  __ \\_  ___/
@@ -67,8 +75,6 @@ macro_rules! kernel {
 #[macro_export]
 macro_rules! debug {
     ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::print_str("[debug] ");
-        $crate::console::print(format_args!($fmt $(, $($arg)+)?));
-        $crate::console::print_str("\n");
+        $crate::console::debug(format_args!($fmt $(, $($arg)+)?));
     }
 }

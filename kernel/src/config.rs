@@ -24,6 +24,8 @@ pub const KERNEL_STACK_BOTTOM: usize = TRAMPOLINE - MAX_KSTACKS * (KERNEL_STACK_
 pub const MAX_THREADS: usize = 64;
 // 每个应用程序地址空间的trap区域基址
 pub const TRAP_CONTEXT_BOTTOM: usize = TRAMPOLINE - MAX_THREADS * PAGE_SIZE;
+// 是否显示debug信息
+pub const DEBUG_MODE: bool = false;
 
 // 获取线程在用户空间的trap_context地址
 pub fn task_trap_context_position(tid: usize) -> usize {
