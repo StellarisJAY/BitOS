@@ -58,9 +58,9 @@ impl BlockCache {
                 .expect("block cache full");
             let id = *(result.0);
             let entry = Arc::clone(result.1);
-            let e = entry.lock();
+            let mut e = entry.lock();
             if e.modified {
-                e.block_device.write(id, &e.block_data);
+                e.sync();
             }
             drop(e);
             self.cache_map.remove(&id);
