@@ -99,8 +99,17 @@ impl Inode {
 
     pub fn find(&self, name: &str) -> Option<u32> {
         return self.read_disk_inode(|disk_inode| {
-            if let Some(files) = self.ls() {
-                return files
+            Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev))
+        });
+    }
+
+    pub fn ls(&self) -> Option<Vec<String>> {
+        return self.read_disk_inode(|disk_inode| {Self::list(disk_inode, Arc::clone(&self.block_dev))});
+    }
+
+    fn find_inode(disk_inode: &DiskInode, name: &str, block_dev: Arc<dyn BlockDevice>) -> Option<u32> {
+        if let Some(files) = Self::list(disk_inode, Arc::clone(&block_dev)) {
+            return files
                     .iter()
                     .enumerate()
                     .find(|(_, filename)| String::from(name) == **filename)
@@ -110,37 +119,30 @@ impl Inode {
                             idx as u32 * DIR_ENTRY_SIZE,
                             DIR_ENTRY_SIZE,
                             dir_entry.as_mut_bytes(),
-                            Arc::clone(&self.block_dev),
+                            Arc::clone(&block_dev),
                         );
                         return dir_entry.inode;
                     });
-            } else {
-                return None;
-            }
-        });
+        } else {
+            return None;
+        }
     }
-    
-    pub fn ls(&self) -> Option<Vec<String>> {
+
+    fn list(disk_inode: &DiskInode, block_dev: Arc<dyn BlockDevice>) -> Option<Vec<String>> {
         let mut res: Vec<String> = Vec::new();
-        let is_dir = self.read_disk_inode(|disk_inode| {
-            if !disk_inode.is_dir() {
-                return false;
-            }
-            let file_count = disk_inode.size() / DIR_ENTRY_SIZE;
-            for i in 0..file_count {
-                let mut dir_entry = DirEntry::empty();
-                disk_inode.read(
-                    i * DIR_ENTRY_SIZE,
+        if !disk_inode.is_dir() {
+            return None;
+        }
+        let file_count = disk_inode.size() / DIR_ENTRY_SIZE;
+        for i in 0..file_count {
+            let mut dir_entry = DirEntry::empty();
+            disk_inode.read(
+                i * DIR_ENTRY_SIZE,
                     DIR_ENTRY_SIZE,
                     dir_entry.as_mut_bytes(),
-                    Arc::clone(&self.block_dev),
+                    Arc::clone(&block_dev),
                 );
-                res.push(String::from(dir_entry.name()));
-            }
-            return true;
-        });
-        if !is_dir {
-            return None;
+            res.push(String::from(dir_entry.name()));
         }
         return Some(res);
     }
@@ -151,7 +153,7 @@ impl Inode {
             if !disk_inode.is_dir() {
                 return (true, false, None);
             }
-            if let Some(_) = self.find(name) {
+            if let Some(_) = Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev)) {
                 return (false, true, None);
             }
             let mut file_system = self.fs.lock();
