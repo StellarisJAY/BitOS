@@ -12,6 +12,7 @@ pub enum InodeType {
 }
 
 pub const INODE_SIZE: u32 = 128;
+pub const INODES_PER_BLOCK: u32 = BLOCK_SIZE / INODE_SIZE;
 const DIRECT_DATA_BLOCK_COUNT: u32 = 24;
 const IDX_COUNT_PER_BLOCK: u32 = 1024;
 // 每级索引能够独自映射的data blocks数量
