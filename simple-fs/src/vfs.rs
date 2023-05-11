@@ -83,6 +83,11 @@ impl Inode {
         }
     }
 
+    pub fn from_inode_seq(seq: u32, fs: Arc<Mutex<SimpleFileSystem>>, block_dev: Arc<dyn BlockDevice>) -> Self {
+        let (block_id, _, offset) = fs.lock().get_inode_position(seq);
+        return Self { block_id: block_id, offset: offset, fs: fs, block_dev: block_dev };
+    }
+
     fn read_disk_inode<F: FnMut(&DiskInode) -> V, V: Sized>(&self, mut f: F) -> V {
         return get_block_cache_entry(self.block_id, Arc::clone(&self.block_dev))
             .unwrap()
