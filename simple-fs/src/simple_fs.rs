@@ -16,15 +16,15 @@ pub struct SimpleFileSystem {
 
 impl SimpleFileSystem {
     // 在块设备上创建一个文件系统
-    pub fn new(block_dev: Arc<dyn BlockDevice>, total_blocks: u32, inodes: u32) -> Self {
+    pub fn new(block_dev: Arc<dyn BlockDevice>, total_blocks: u32, inode_bmap_blocks: u32) -> Self {
+        let inodes = inode_bmap_blocks * ALLOC_PER_BMAP_BLOCK;
         let inode_blocks = inodes / INODES_PER_BLOCK;
-        let inode_bmap_blocks = inodes / ALLOC_PER_BMAP_BLOCK; // 一个块里面有多个inodes
-                                                               // 总块数减去一个超级块和inode块 = data块 + data_bmap块
+        // 总块数减去一个超级块和inode块 = data块 + data_bmap块
         let remaining = total_blocks - inode_blocks - inode_bmap_blocks - 1;
-        // 剩下的block里面，分成多个{一个bitmap块+可分配的data块}组合
-        let data_bmap_blocks = remaining / (ALLOC_PER_BMAP_BLOCK + 1);
-        let data_blocks = data_bmap_blocks * ALLOC_PER_BMAP_BLOCK;
-
+        // 剩下的block里面，分成多个{一个bitmap块+可分配的data块}组合，向上取整避免data_blocks数量不足一个bitmap块可分配的数量
+        let data_bmap_blocks = (remaining + ALLOC_PER_BMAP_BLOCK + 1) / (ALLOC_PER_BMAP_BLOCK + 1);
+        let data_blocks = remaining - data_bmap_blocks;
+        
         // 清空缓存数据
         for i in 0..total_blocks {
             get_block_cache_entry(i, Arc::clone(&block_dev))
