@@ -34,6 +34,10 @@ pub fn get_block_cache_entry(
     return entry;
 }
 
+pub fn fsync() {
+    BLOCK_CACHE.lock().sync();
+}
+
 impl BlockCache {
     pub fn new() -> Self {
         Self {
@@ -72,6 +76,11 @@ impl BlockCache {
         self.cache_map.insert(block_id, Arc::clone(&entry));
         return Some(entry);
     }
+    pub fn sync(&self) {
+        self.cache_map.values().for_each(|entry| {
+            entry.lock().sync();
+        });
+    }
 }
 
 impl CacheEntry {
@@ -98,7 +107,7 @@ impl CacheEntry {
     // 从块缓存的offset位置，获取T类型的不可变引用
     pub fn as_ref<'a, T: Sized>(&self, offset: u32) -> &'a T {
         assert!(
-            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            (offset + core::mem::size_of::<T>() as u32) <= BLOCK_SIZE,
             "block offset overflow"
         );
         unsafe {
@@ -110,7 +119,7 @@ impl CacheEntry {
     // 从块缓存的offset位置，获取T类型的可变引用，将导致块缓存modified
     pub fn as_mut<'a, T: Sized>(&mut self, offset: u32) -> &'a mut T {
         assert!(
-            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            (offset + core::mem::size_of::<T>() as u32) <= BLOCK_SIZE,
             "block offset overflow"
         );
         unsafe {
