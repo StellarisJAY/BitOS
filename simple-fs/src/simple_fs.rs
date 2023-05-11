@@ -1,5 +1,5 @@
 use crate::bitmap::{Bitmap, ALLOC_PER_BMAP_BLOCK};
-use crate::block_cache::get_block_cache_entry;
+use crate::block_cache::{get_block_cache_entry, fsync};
 use crate::block_device::BlockDevice;
 use crate::inode::{DiskInode, InodeType, INODES_PER_BLOCK, INODE_SIZE};
 use crate::layout::BLOCK_SIZE;
@@ -123,5 +123,9 @@ impl SimpleFileSystem {
                 *inode = DiskInode::new(InodeType::Directory);
             });
         return inode_seq;
+    }
+
+    pub fn fsync(&self) {
+        fsync();
     }
 }
