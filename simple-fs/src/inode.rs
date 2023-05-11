@@ -52,6 +52,12 @@ impl DiskInode {
     pub fn total_blocks(&self) -> u32 {
         return self.data_blocks() + self.index_blocks();
     }
+    pub fn size(&self) -> u32 {
+        return self.size;
+    }
+    pub fn set_type(&mut self, f_type: InodeType) {
+        self.inode_type = f_type;
+    }
     // 获取文件的offset位置所属的数据块缓存
     pub fn get_block(
         &self,
@@ -217,11 +223,11 @@ impl DiskInode {
     }
 }
 
-fn data_blocks_for_size(size: u32) -> u32 {
+pub fn data_blocks_for_size(size: u32) -> u32 {
     return (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 }
 
-fn index_blocks_for_size(size: u32) -> u32 {
+pub fn index_blocks_for_size(size: u32) -> u32 {
     let mut data_blocks = data_blocks_for_size(size);
     let mut blocks: u32 = 1;
     if data_blocks < DIRECT_DATA_BLOCK_COUNT {

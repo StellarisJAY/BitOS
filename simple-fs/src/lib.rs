@@ -6,6 +6,7 @@ pub mod block_device;
 pub mod inode;
 pub mod simple_fs;
 pub mod super_block;
+pub mod vfs;
 
 pub mod layout {
     // 一个磁盘块的大小：4KiB
