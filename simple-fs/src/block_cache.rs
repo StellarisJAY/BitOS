@@ -128,7 +128,7 @@ impl CacheEntry {
         F: FnOnce(&T) -> V,
     {
         assert!(
-            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            (offset + core::mem::size_of::<T>() as u32) <= BLOCK_SIZE,
             "block offset overflow"
         );
         unsafe {
@@ -145,7 +145,7 @@ impl CacheEntry {
         F: FnOnce(&mut T) -> V,
     {
         assert!(
-            (offset + core::mem::size_of::<T>() as u32) >= BLOCK_SIZE,
+            (offset + core::mem::size_of::<T>() as u32) <= BLOCK_SIZE,
             "block offset overflow"
         );
         unsafe {
