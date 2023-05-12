@@ -1,5 +1,6 @@
 TOOL = "riscv64-unknown-elf-"
 TARGET = "./target/riscv64gc-unknown-none-elf/release/"
+FS_IMG = "./fs.bin"
 ELF = $(TARGET)kernel
 BIN = $(TARGET)kernel.bin
 CPUS = 1
@@ -8,6 +9,8 @@ QEMU_OPTS = -machine virt \
 	    -bios none \
 	    -kernel $(TARGET)kernel.bin \
 	    -smp $(CPUS) \
+	    -drive file=$(FS_IMG),if=none,format=raw,id=x0 \
+        -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 	    -nographic 
 build:
 	@cargo build --release
