@@ -5,6 +5,9 @@ use crate::inode::{DiskInode, InodeType, INODES_PER_BLOCK, INODE_SIZE};
 use crate::layout::BLOCK_SIZE;
 use crate::super_block::SuperBlock;
 use alloc::sync::Arc;
+use crate::vfs::Inode;
+use spin::Mutex;
+use core::option::Option;
 
 pub struct SimpleFileSystem {
     pub block_dev: Arc<dyn BlockDevice>,
@@ -123,6 +126,11 @@ impl SimpleFileSystem {
                 *inode = DiskInode::new(InodeType::Directory);
             });
         return inode_seq;
+    }
+
+    pub fn root_inode(&self, fs: Arc<Mutex<SimpleFileSystem>>) -> Inode {
+        let (block_id, _, offset) = self.get_inode_position(0);
+        return Inode::new(block_id, offset, fs, Arc::clone(&self.block_dev));
     }
 
     pub fn fsync(&self) {
