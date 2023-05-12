@@ -17,6 +17,7 @@ mod console;
 mod arch;
 mod config;
 mod driver;
+mod fs;
 mod mem;
 mod proc;
 mod sync;
@@ -106,6 +107,7 @@ pub unsafe fn rust_main() {
         mem::kernel::switch_to_kernel_space();
         kernel!("kernel memory mapped and initialized, switched to kernel mem space");
         kernel!("hart0 booted, kernel initialized");
+        fs::inode::list_apps();
         KERNEL_INITED.store(1, Ordering::SeqCst);
     } else {
         while KERNEL_INITED.load(Ordering::SeqCst) == 0 {}
