@@ -2,20 +2,26 @@ use std::fs::{File, OpenOptions};
 use simplefs::block_device::BlockDevice;
 use simplefs::layout::BLOCK_SIZE;
 use simplefs::simple_fs::SimpleFileSystem;
-use simplefs::vfs::{Inode, DirEntry};
+use simplefs::vfs::Inode;
 use spin::Mutex;
 use alloc::sync::Arc;
 use std::io::{Seek, SeekFrom, Read, Write};
+
 extern crate simplefs;
 extern crate alloc;
 struct FileBlockDev (Mutex<File>);
 
 fn main() {
-    test_create();
-    test_open();
+    create_fs();
 }
 
-fn test_create() {
+fn create_fs() {
+    let paths: Vec<&str> = vec!["../user_lib/target/riscv64gc-unknown-none-elf/release/hello",
+    "../user_lib/target/riscv64gc-unknown-none-elf/release/shell",
+    "../user_lib/target/riscv64gc-unknown-none-elf/release/fork_test",
+    "../user_lib/target/riscv64gc-unknown-none-elf/release/thread_test"];
+    let app_names: Vec<&str> = vec!["hello_world", "shell", "fork_test", "thread_test"];
+
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));
     let mut fs = SimpleFileSystem::new(Arc::clone(&block_dev), 4096, 1);
     let root_inode = fs.create_root_dir();
@@ -24,33 +30,14 @@ fn test_create() {
     let fs = Arc::new(Mutex::new(fs));
     let root_inode = Inode::new(blk_id, offset, Arc::clone(&fs), Arc::clone(&block_dev));
     println!("root inode got, creating files");
-    root_inode.create("file1", false);
-    root_inode.create("file2", false);
-    root_inode.create("dir1", true);
-    root_inode.create("dir2", true);
-    println!("files created, listing files");
-    root_inode.ls().unwrap().iter().for_each(|name| {
-        println!("{}", name);
-    });
-    let id = root_inode.find("file1").unwrap();
-    let file1 = Inode::from_inode_seq(id, Arc::clone(&fs), Arc::clone(&block_dev));
-    file1.write(0, "hello world".as_bytes());
+    for (i, name) in app_names.iter().enumerate() {
+        let inode = root_inode.create(name, false).unwrap();
+        let mut elf = OpenOptions::new().read(true).open(paths.get(i).unwrap()).expect("open elf file error");
+        let mut data: Vec<u8> = Vec::new();
+        elf.read_to_end(&mut data).expect("read elf file error");
+        inode.write(0, data.as_slice());
+    }
     fs.lock().fsync();
-}
-
-fn test_open() {
-    let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", false));
-    let fs = SimpleFileSystem::open(Arc::clone(&block_dev));
-    let fs = Arc::new(Mutex::new(fs));
-    let root_inode = Inode::from_inode_seq(0, Arc::clone(&fs), Arc::clone(&block_dev));
-    root_inode.ls().unwrap().iter().for_each(|name| {
-        println!("{}", name);
-    });
-    let id = root_inode.find("file1").unwrap();
-    let file1 = Inode::from_inode_seq(id, Arc::clone(&fs), Arc::clone(&block_dev));
-    let mut buf = [0u8; 5];
-    file1.read(6, &mut buf);
-    println!("file content: {}", core::str::from_utf8(&buf).unwrap());
 }
 
 impl FileBlockDev {
@@ -73,5 +60,3 @@ impl BlockDevice for FileBlockDev {
         file.write(data).expect("file write error");
     }
 }
-
-
