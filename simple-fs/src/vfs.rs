@@ -102,9 +102,12 @@ impl Inode {
             .modify(self.offset, |disk_inode: &mut DiskInode| f(disk_inode));
     }
 
-    pub fn find(&self, name: &str) -> Option<u32> {
+    pub fn find(&self, name: &str) -> Option<Inode> {
         return self.read_disk_inode(|disk_inode| {
             Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev))
+        }).map(|inode_seq| {
+            let (block_id, _, offset) = self.fs.lock().get_inode_position(inode_seq);
+            return Inode::new(block_id, offset, Arc::clone(&self.fs), Arc::clone(&self.block_dev));
         });
     }
 
@@ -156,10 +159,10 @@ impl Inode {
         // 修改当前inode对应的disk inode，返回是否是dir，文件是否已经存在，以及文件的inode号
         let (is_dir, file_exists, inode_seq) = self.modify_disk_inode(|disk_inode| {
             if !disk_inode.is_dir() {
-                return (true, false, None);
+                return (false, false, None);
             }
             if let Some(_) = Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev)) {
-                return (false, true, None);
+                return (true, true, None);
             }
             let mut file_system = self.fs.lock();
             let inode_seq = file_system.alloc_inode().unwrap();
@@ -175,7 +178,7 @@ impl Inode {
                 entry.as_bytes(),
                 Arc::clone(&self.block_dev),
             );
-            return (false, false, Some(inode_seq));
+            return (true, false, Some(inode_seq));
         });
         if !is_dir || file_exists {
             return None;
