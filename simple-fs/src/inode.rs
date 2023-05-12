@@ -3,6 +3,7 @@ use super::block_cache::CacheEntry;
 use super::block_device::BlockDevice;
 use super::layout::BLOCK_SIZE;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use spin::mutex::Mutex;
 
 #[derive(PartialEq, Eq)]
