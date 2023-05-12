@@ -10,7 +10,7 @@ QEMU_OPTS = -machine virt \
 	    -kernel $(TARGET)kernel.bin \
 	    -smp $(CPUS) \
 	    -drive file=$(FS_IMG),if=none,format=raw,id=x0 \
-        -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+	    -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 	    -nographic 
 build:
 	@cargo build --release
