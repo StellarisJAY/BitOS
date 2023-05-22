@@ -1,7 +1,8 @@
 use crate::arch::riscv::qemu::layout::UART0;
 use core::fmt::*;
 use spin::lazy::Lazy;
-use spin::mutex::SpinMutex;
+use spin::mutex::Mutex;
+use lazy_static::lazy_static;
 
 // uart 寄存器组，see：https://www.lammertbies.nl/comm/info/serial-uart
 const RHR: usize = 0; // 读缓冲（8bit）
@@ -21,21 +22,15 @@ const LCR_BAUD_LATCH: usize = 1 << 7; // DLAB, DLL DLM accessible
 
 pub struct Uart {}
 
-pub static UART: Lazy<SpinMutex<Uart>> = Lazy::new(|| {
-    return SpinMutex::new(Uart::new());
-});
+lazy_static! {
+    pub static ref UART: Mutex<Uart> = Mutex::new(Uart::new());
+}
 
 pub fn get_char() -> Option<u8> {
     let uart = UART.lock();
     let ch = uart.get();
     drop(uart);
     return ch;
-}
-
-pub fn put_char(ch: u8) {
-    let uart = UART.lock();
-    uart.put(ch);
-    drop(uart);
 }
 
 impl Write for Uart {
