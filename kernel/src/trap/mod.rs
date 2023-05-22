@@ -75,16 +75,11 @@ pub unsafe fn user_trap_handler() {
 #[no_mangle]
 pub fn kernel_trap_handler() {
     let scause = scause::read();
-    let mut epc = sepc::read();
-    epc += 4;
-    sepc::write(epc);
+    let val = stval::read();
     match scause.cause() {
-        // 由machine模式时间中断处理器抛出的S模式软件中断
-        Interrupt(e) => {
-            debug!("interrupt: {:?}", e);
-        }
         Exception(e) => {
-            debug!("exception: {:?}", e);
+            kernel!("exception: {:?}, val: {:#x}", e, val);
+            panic!("kernel exception")
         }
         _ => panic!("unhandled trap"),
     }
