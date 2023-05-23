@@ -4,6 +4,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
 use spin::mutex::Mutex;
+use alloc::boxed::Box;
 
 const BLOCK_CACHE_LIMIT: usize = 128;
 
@@ -69,10 +70,12 @@ impl BlockCache {
             drop(e);
             self.cache_map.remove(&id);
         }
-        // 从块设备读取数据，创建entry并添加到缓存map
-        let mut data = [0u8; BLOCK_SIZE as usize];
-        block_device.read(block_id, &mut data);
-        let entry = Arc::new(Mutex::new(CacheEntry::new(block_id, data, block_device)));
+        // block_data必须强制在堆上分配，避免栈溢出
+        let entry = Arc::new(Mutex::new(CacheEntry::new(block_id, [0u8; BLOCK_SIZE as usize], Arc::clone(&block_device))));
+        let mut inner = entry.lock();
+        let data = &mut inner.block_data;
+        block_device.read(block_id, data);
+        drop(inner);
         self.cache_map.insert(block_id, Arc::clone(&entry));
         return Some(entry);
     }
