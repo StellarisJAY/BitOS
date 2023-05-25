@@ -98,14 +98,15 @@ pub unsafe fn rust_main() {
     let id = cpuid();
     if id == 0 {
         // cpu0 init kernel
-        driver::init();
+        driver::uart::Uart::init();
         console::print_banner();
-        kernel!("drivers initialized");
         trap::trap_init();
         mem::init();
+        kernel!("kernel memory initialized");
+        driver::init();
+        kernel!("drivers initialized");
         proc::init_processors();
         mem::kernel::switch_to_kernel_space();
-        kernel!("kernel memory mapped and initialized, switched to kernel mem space");
         kernel!("hart0 booted, kernel initialized");
         fs::inode::list_apps();
         KERNEL_INITED.store(1, Ordering::SeqCst);

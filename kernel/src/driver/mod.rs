@@ -1,7 +1,7 @@
 pub mod uart;
-pub mod virtio_block;
 pub mod virtio;
+pub mod virtio_block;
 
 pub fn init() {
-    uart::Uart::init();
+    virtio_block::init_block_device();
 }
