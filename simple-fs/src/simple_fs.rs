@@ -14,7 +14,6 @@ pub struct SimpleFileSystem {
     pub inode_bitmap: Bitmap,
     pub data_bitmap: Bitmap,
     inode_start: u32,
-    data_start: u32,
 }
 
 impl SimpleFileSystem {
@@ -57,7 +56,6 @@ impl SimpleFileSystem {
             inode_bitmap: inode_bmap,
             data_bitmap: data_bmap,
             inode_start: first_inode_block,
-            data_start: first_data_block,
         };
     }
 
@@ -86,7 +84,6 @@ impl SimpleFileSystem {
             inode_bitmap: inode_bmap,
             data_bitmap: data_bmap,
             inode_start: first_inode_block,
-            data_start: first_data_block,
         };
     }
 

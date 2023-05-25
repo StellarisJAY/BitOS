@@ -4,7 +4,6 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
 use spin::mutex::Mutex;
-use alloc::boxed::Box;
 
 const BLOCK_CACHE_LIMIT: usize = 128;
 
