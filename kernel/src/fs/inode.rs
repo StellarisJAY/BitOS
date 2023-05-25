@@ -1,5 +1,5 @@
 use super::File;
-use crate::driver::virtio_blk::BLOCK_DEVICE;
+use crate::driver::virtio_block::BLOCK_DEVICE;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::bitflags;
@@ -10,11 +10,18 @@ use spin::mutex::Mutex;
 
 lazy_static! {
     pub static ref ROOT_INODE: Arc<Inode> = {
+        let fs = Arc::clone(&FILE_SYSTEM);
+        let root = fs.lock().root_inode(Arc::clone(&FILE_SYSTEM));
+        return Arc::new(root);
+    };
+}
+
+lazy_static! {
+    pub static ref FILE_SYSTEM: Arc<Mutex<SimpleFileSystem>> = {
         let file_system = Arc::new(Mutex::new(SimpleFileSystem::open(Arc::clone(
             &BLOCK_DEVICE,
         ))));
-        let root = file_system.lock().root_inode(Arc::clone(&file_system));
-        return Arc::new(root);
+        return file_system;
     };
 }
 
@@ -61,7 +68,9 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
 
 pub fn list_apps() {
     let apps = ROOT_INODE.ls().unwrap();
-    apps.iter().enumerate().for_each(|(i, name)| {kernel!("app {}: {}", i, name);});
+    apps.iter().enumerate().for_each(|(i, name)| {
+        kernel!("app {}: {}", i, name);
+    });
 }
 
 impl OSInode {

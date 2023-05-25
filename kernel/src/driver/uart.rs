@@ -1,8 +1,8 @@
 use crate::arch::riscv::qemu::layout::UART0;
 use core::fmt::*;
+use lazy_static::lazy_static;
 use spin::lazy::Lazy;
 use spin::mutex::Mutex;
-use lazy_static::lazy_static;
 
 // uart 寄存器组，see：https://www.lammertbies.nl/comm/info/serial-uart
 const RHR: usize = 0; // 读缓冲（8bit）

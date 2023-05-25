@@ -3,7 +3,6 @@ use super::memory_set::{MapMode, MemPermission, MemoryArea, MemorySet};
 use super::page_table::PageTable;
 use crate::arch::riscv::qemu::layout::UART0;
 use crate::config::{KERNEL_STACK_BOTTOM, MAX_VA, PAGE_SIZE, PHYS_MEM_LIMIT, TRAMPOLINE};
-use crate::driver::uart::put_char;
 use alloc::vec;
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
