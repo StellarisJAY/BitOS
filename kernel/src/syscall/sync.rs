@@ -14,13 +14,17 @@ pub fn mutex_create(blocking: bool) -> isize {
     }else {
         Some(Arc::new(SpinMutex::new()))
     };
+    let result = inner_pcb.mutex_table.iter().enumerate()
+    .find(|(_, item)| {(*item).is_some()})
+    .map(|(i, _)| i);
     
-    let id = inner_pcb.mutex_table.iter().enumerate()
-    .find(|(_, item)| item.is_none())
-    .map(|(i, _)| i)
-    .unwrap();
-    inner_pcb.mutex_table[id] = mutex;
-    return id as isize;
+    if let Some(id) = result {
+        inner_pcb.mutex_table[id] = mutex;
+        return id as isize;
+    }else {
+        inner_pcb.mutex_table.push(mutex);
+        return inner_pcb.mutex_table.len() as isize - 1;
+    }
 }
 
 // mutex_lock 互斥锁上锁
