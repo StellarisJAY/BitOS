@@ -135,6 +135,11 @@ pub fn current_task() -> Arc<TaskControlBlock> {
     return Arc::clone(&task);
 }
 
+pub fn current_proc() -> Arc<ProcessControlBlock> {
+    let inner_task = current_task().inner.borrow();
+    inner_task.process.upgrade().unwrap()
+}
+
 pub fn push_task(task: Arc<TaskControlBlock>) {
     MANAGER.lock().push(Arc::clone(&task));
 }
