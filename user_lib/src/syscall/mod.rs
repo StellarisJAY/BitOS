@@ -12,6 +12,10 @@ const SYSCALL_SPAWN: usize = 1220;
 const SYSCALL_CREATE_THREAD: usize = 1000;
 const SYSCALL_WAITTID: usize = 1001;
 
+const SYSCALL_MUTEX_CREATE: usize = 1010;
+const SYSCALL_MUTEX_LOCK: usize = 1011;
+const SYSCALL_MUTEX_UNLOCK: usize = 1012;
+
 // ecall 系统调用
 fn ecall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
@@ -59,4 +63,16 @@ pub fn wait_tid(tid: isize) -> isize {
 
 pub fn spawn(buf: &[u8]) -> isize {
     ecall(SYSCALL_SPAWN, [buf.as_ptr() as usize, buf.len(), 0])
+}
+
+pub fn mutex_create(blocking: bool) -> isize {
+    ecall(SYSCALL_MUTEX_CREATE, [if blocking {1} else {0}, 0, 0])
+}
+
+pub fn mutex_lock(id: isize) -> isize {
+    ecall(SYSCALL_MUTEX_LOCK, [id as usize, 0, 0])
+}
+
+pub fn mutex_unlock(id: isize) -> isize {
+    ecall(SYSCALL_MUTEX_UNLOCK, [id as usize, 0, 0])
 }

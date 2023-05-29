@@ -6,6 +6,7 @@
 mod syscall;
 #[macro_use]
 pub mod utils;
+pub mod sync;
 
 const USER_HEAP_SIZE: usize = 4096 * 1024;
 
@@ -100,4 +101,16 @@ pub fn wait_tid(tid: isize) -> isize {
             exit_code => return exit_code,
         }
     }
+}
+
+pub fn mutex_create(blocking: bool) -> isize {
+    syscall::mutex_create(blocking)
+}
+
+pub fn mutex_lock(id: isize) {
+    syscall::mutex_lock(id);
+}
+
+pub fn mutex_unlock(id: isize) {
+    syscall::mutex_unlock(id);
 }
