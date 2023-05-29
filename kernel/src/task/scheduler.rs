@@ -136,7 +136,8 @@ pub fn current_task() -> Arc<TaskControlBlock> {
 }
 
 pub fn current_proc() -> Arc<ProcessControlBlock> {
-    let inner_task = current_task().inner.borrow();
+    let task = current_task();
+    let inner_task = task.inner.borrow();
     inner_task.process.upgrade().unwrap()
 }
 
