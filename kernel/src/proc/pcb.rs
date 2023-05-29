@@ -9,6 +9,7 @@ use crate::task::tid::TidAllocator;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cell::RefMut;
+use crate::sync::mutex::Mutex;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ProcessState {
@@ -34,6 +35,7 @@ pub struct InnerPCB {
     pub exit_code: i32,
     pub tid_allocator: TidAllocator,
     pub tasks: Vec<Arc<TaskControlBlock>>,
+    pub mutex_table: Vec<Option<Arc<dyn Mutex>>>, // 进程持有的mutex表，option表示一个mutex槽位是否空闲
 }
 
 impl ProcessControlBlock {
@@ -54,6 +56,7 @@ impl ProcessControlBlock {
             exit_code: 0,
             tid_allocator: TidAllocator::new(0, MAX_THREADS),
             tasks: Vec::with_capacity(MAX_THREADS),
+            mutex_table: Vec::new(),
         };
         let proc = Arc::new(Self {
             pid: pid,
@@ -85,6 +88,7 @@ impl ProcessControlBlock {
             exit_code: 0,
             tid_allocator: p_inner.tid_allocator.clone(),
             tasks: Vec::new(),
+            mutex_table: Vec::new(),
         };
         let pcb = Arc::new(ProcessControlBlock {
             stack_base: parent.stack_base,
