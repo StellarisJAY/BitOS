@@ -33,6 +33,7 @@ SECTIONS
     sbss = .;
     .bss : {
         *(.bss.stack)   # bss段的boot stack
+        . = ALIGN(4K);
         *(.bss, .bss.*) # bss段
         *(.sbss, .sbss.*)
     }
