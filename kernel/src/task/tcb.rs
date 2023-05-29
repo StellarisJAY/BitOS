@@ -40,7 +40,7 @@ pub struct TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    pub fn new(process: Arc<ProcessControlBlock>, entry_point: usize) -> Self {
+    pub fn new(process: Arc<ProcessControlBlock>, entry_point: usize, arg: usize) -> Self {
         let tid = process.alloc_tid();
         let kstask = alloc_kstack().unwrap();
         let (kstack_bottom, kstack_top) = kernel_stack_position(kstask.0);
@@ -67,6 +67,8 @@ impl TaskControlBlock {
             entry_point,
             ustack_top,
         );
+        // 传递线程函数参数的地址到a0寄存器
+        (*trap_ctx).a[0] = arg;
         return tcb;
     }
 

@@ -28,7 +28,7 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         SYSCALL_YIELD => proc::sys_yield(),
         SYSCALL_READ => fs::sys_read(args[0], args[1], args[2]),
         SYSCALL_FORK => proc::sys_fork() as isize,
-        SYSCALL_CREATE_THREAD => task::create_thread(args[0]) as isize,
+        SYSCALL_CREATE_THREAD => task::create_thread(args[0], args[1]) as isize,
         SYSCALL_WAIT_TID => task::wait_tid(args[0]),
         SYSCALL_WAITPID => proc::sys_waitpid(args[0]),
         SYSCALL_SPAWN => proc::sys_spawn(args[0], args[1]),

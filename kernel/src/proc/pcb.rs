@@ -64,7 +64,7 @@ impl ProcessControlBlock {
             inner: SafeCell::new(inner),
         });
         // 创建main线程，然后将main线程交给调度器
-        let task = Arc::new(TaskControlBlock::new(Arc::clone(&proc), entry_point));
+        let task = Arc::new(TaskControlBlock::new(Arc::clone(&proc), entry_point, 0));
         push_task(Arc::clone(&task));
         proc.inner.borrow().tasks.push(task);
         let res = Arc::clone(&proc);
