@@ -129,6 +129,10 @@ pub fn current_task_satp() -> usize {
     return processor.borrow().current_task().unwrap().user_satp();
 }
 
+pub fn current_tid() -> usize {
+    current_task().tid
+}
+
 pub fn current_task() -> Arc<TaskControlBlock> {
     let mut processor = PROCESSORS.get(cpuid()).unwrap().borrow();
     let task = processor.current_task().unwrap();
