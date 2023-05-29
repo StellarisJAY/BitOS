@@ -108,7 +108,6 @@ pub unsafe fn rust_main() {
         proc::init_processors();
         mem::kernel::switch_to_kernel_space();
         kernel!("hart0 booted, kernel initialized");
-        fs::inode::list_apps();
         KERNEL_INITED.store(1, Ordering::SeqCst);
     } else {
         while KERNEL_INITED.load(Ordering::SeqCst) == 0 {}
