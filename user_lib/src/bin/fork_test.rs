@@ -4,8 +4,11 @@
 #[macro_use]
 extern crate user_lib;
 use user_lib::{fork, wait_pid, exit};
+use user_lib::time::get_time_ms;
+
 #[no_mangle]
 pub fn main() -> i32 {
+    let start = get_time_ms();
     println!("[parent] fork test begin");
     let p1 = fork();
     if p1 == 0 {
@@ -13,7 +16,7 @@ pub fn main() -> i32 {
         exit(-1);
     }else {
         let exit_code = wait_pid(p1 as usize);
-        println!("[parent] p1 exit code: {}", exit_code);
+        println!("[parent] p1 exit code: {}, time used: {} ms", exit_code, get_time_ms() - start);
     }
     return 0;
 }

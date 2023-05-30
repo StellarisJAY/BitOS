@@ -8,6 +8,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use alloc::vec;
 use user_lib::sync::mutex::Mutex;
+use user_lib::time::get_time_ms;
 
 struct Point {
     x: isize,
@@ -16,8 +17,10 @@ struct Point {
 
 #[no_mangle]
 pub fn main() -> i32 {
+    let start = get_time_ms();
     test_create_thread();
     test_mutex();
+    println!("Thread Test Finish. Time used: {} ms", get_time_ms() - start);
     return 0;
 }
 
