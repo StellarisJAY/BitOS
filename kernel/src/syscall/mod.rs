@@ -2,10 +2,13 @@ pub mod fs;
 pub mod proc;
 pub mod task;
 pub mod sync;
+pub mod time;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
+
+const SYSCALL_GET_TIME: usize = 169;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_EXEC: usize = 221;
@@ -35,6 +38,7 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         SYSCALL_MUTEX_CREATE => sync::mutex_create(args[0] == 1),
         SYSCALL_MUTEX_LOCK => sync::mutex_lock(args[0] as isize),
         SYSCALL_MUTEX_UNLOCK => sync::mutex_unlock(args[0] as isize),
+        SYSCALL_GET_TIME => time::syscall_get_time(args[0]),
         _ => {
             debug!("unsupported syscall: {}", id);
             panic!("unsupported syscall");

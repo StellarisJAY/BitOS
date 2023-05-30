@@ -7,6 +7,7 @@ mod syscall;
 #[macro_use]
 pub mod utils;
 pub mod sync;
+pub mod time;
 
 const USER_HEAP_SIZE: usize = 4096 * 1024;
 

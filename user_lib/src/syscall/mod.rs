@@ -3,6 +3,7 @@ use core::arch::asm;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
+const SYSCALL_GET_TIME: usize = 169;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_EXEC: usize = 221;
@@ -75,4 +76,8 @@ pub fn mutex_lock(id: isize) -> isize {
 
 pub fn mutex_unlock(id: isize) -> isize {
     ecall(SYSCALL_MUTEX_UNLOCK, [id as usize, 0, 0])
+}
+
+pub fn get_time(res_ptr: usize) -> isize {
+    ecall(SYSCALL_GET_TIME, [res_ptr, 0, 0])
 }

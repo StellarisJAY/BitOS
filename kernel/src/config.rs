@@ -4,6 +4,8 @@ pub const KERNEL_HEAP_SIZE: usize = 0x00100000;
 pub const PAGE_SIZE: usize = 4096;
 
 pub const TIME_FREQ: usize = 10000000;
+pub const TIME_FREQ_MS: usize = TIME_FREQ / 1000;
+pub const TIME_FREQ_US: usize = TIME_FREQ / 1000_000;
 
 // 每个进程的用户态栈大小：
 pub const USER_STACK_SIZE: usize = 8 * 1024;

@@ -6,8 +6,8 @@ static mut TIMER_SCRATCH: [[usize; 5]; CPUS] = [[0; 5]; CPUS];
 
 pub unsafe fn timer_init() {
     let id = mhartid::read();
-    let interval = TIME_FREQ;
-    add_timer(id, TIME_FREQ);
+    let interval = TIME_FREQ / 10;
+    add_timer(id, interval);
     TIMER_SCRATCH[id][3] = mtime_cmp_addr(id);
     TIMER_SCRATCH[id][4] = interval;
     mscratch::write(TIMER_SCRATCH[id].as_ptr() as usize);
