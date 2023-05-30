@@ -25,6 +25,7 @@ mod syscall;
 mod task;
 mod trap;
 mod timer;
+mod shutdown;
 
 global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));
@@ -108,6 +109,6 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
             error!("kernel panicked");
         }
     }
-
+    shutdown::panic_shutdown();
     loop {}
 }
