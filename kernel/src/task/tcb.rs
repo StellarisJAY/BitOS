@@ -159,6 +159,13 @@ impl TaskControlBlock {
         let proc = inner.process.upgrade().unwrap();
         proc.translate_buffer(addr, len)
     }
+    // 虚拟地址转换物理地址
+    pub fn transalate_virtaddr(&self, va: usize) -> usize {
+        let inner = self.inner.borrow();
+        let proc = inner.process.upgrade().unwrap();
+        proc.translate_va(va)
+    }
+
     // 获取进程上下文的虚拟地址
     pub fn context_addr(&self) -> usize {
         let mut inner = self.inner.borrow();

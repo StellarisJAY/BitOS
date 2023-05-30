@@ -137,6 +137,11 @@ impl ProcessControlBlock {
         return res;
     }
 
+    pub fn translate_va(&self, va: usize) -> usize {
+        let inner = self.inner.borrow();
+        inner.memory_set.va_to_pa(VirtAddr(va)).unwrap().0
+    }
+
     pub fn borrow_inner(&self) -> RefMut<'_, InnerPCB> {
         self.inner.borrow()
     }
