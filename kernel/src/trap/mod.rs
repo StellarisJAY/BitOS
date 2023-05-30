@@ -2,7 +2,7 @@ use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::mem::address::VirtAddr;
 use crate::syscall::handle_syscall;
 use crate::task::scheduler::{
-    current_task, current_task_satp, current_task_trap_context, current_task_trap_va, cpuid, schedule_idle
+    current_task, current_task_satp, current_task_trap_context, current_task_trap_va, yield_current_task
 };
 use context::TrapContext;
 use core::arch::asm;
@@ -13,7 +13,7 @@ use riscv::register::scause::{
     Trap::{Exception, Interrupt},
 };
 use riscv::register::{sepc, sstatus, stval, stvec};
-use crate::timer::get_next_trigger;
+use crate::arch::riscv::register::clear_sip_soft;
 
 pub mod context;
 
@@ -57,7 +57,9 @@ pub unsafe fn user_trap_handler() {
             panic!("load/store fault")
         }
         Interrupt(SupervisorSoft) => {
-            schedule_idle()
+            // 清除sip的soft中断，避免重复中断
+            clear_sip_soft();
+            yield_current_task();
         }
         Exception(StorePageFault) => {
             let pcb = current_task().inner.borrow().process.upgrade().unwrap();

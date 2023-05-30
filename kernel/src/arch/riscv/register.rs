@@ -50,3 +50,13 @@ pub unsafe fn add_mtimecmp(mhartid: usize, interval: usize) {
 pub fn mtime_cmp_addr(mhartid: usize) -> usize {
     return CLINT_MTIMECMP + 8 * mhartid;
 }
+
+#[inline]
+pub fn clear_sip_soft() {
+    unsafe {
+        let mut val = 0;
+        asm!("csrr {}, sip", out(reg)val);
+        val &= !(1 << 1);
+        asm!("csrw sip, {}", in(reg)val);
+    }
+}
