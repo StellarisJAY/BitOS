@@ -8,11 +8,13 @@ timervec:
     sd a2, 8(a0)
     sd a3, 16(a0)
 
-    # rewrite a1,a3,a4 to prepare next timer interrup
+    # rewrite a1,a3,a4 to prepare next timer interrupt
     ld a1, 24(a0) # MTIMECMP addr
     ld a2, 32(a0) # write timer interval to a2
-    ld a3, 0(a1)  #
+    ld a3, 0(a1)  # read mtimecmp
+    # interval + mtimecmp
     add a3, a3, a2
+    # write mtimecmp
     sd a3, 0(a1)
 
     # trigger a supervisor interrupt

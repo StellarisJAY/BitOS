@@ -28,21 +28,25 @@ pub unsafe fn read_mtime() -> usize {
     ptr::read_volatile(CLINT_MTIME as *const usize)
 }
 
+#[inline]
 pub unsafe fn read_mtimecmp(mhartid: usize) -> usize {
     ptr::read_volatile((CLINT_MTIMECMP + 8 * mhartid) as *const usize)
 }
 
+#[inline]
 unsafe fn write_mtimecmp(mhartid: usize, value: usize) {
-    let offset = CLINT_MTIME + 8 * mhartid;
+    let offset = CLINT_MTIMECMP + 8 * mhartid;
     ptr::write_volatile(offset as *mut usize, value);
 }
 
+#[inline]
 pub unsafe fn add_mtimecmp(mhartid: usize, interval: usize) {
     let value = read_mtime();
     // 下一个中断的时间：当前time+间隔
     write_mtimecmp(mhartid, value + interval);
 }
 
+#[inline]
 pub fn mtime_cmp_addr(mhartid: usize) -> usize {
     return CLINT_MTIMECMP + 8 * mhartid;
 }

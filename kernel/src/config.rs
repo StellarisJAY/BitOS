@@ -3,6 +3,8 @@ pub const PHYS_MEM_LIMIT: usize = 0x88000000; // 内存大小=2GB
 pub const KERNEL_HEAP_SIZE: usize = 0x00100000;
 pub const PAGE_SIZE: usize = 4096;
 
+pub const TIME_FREQ: usize = 10000000;
+
 // 每个进程的用户态栈大小：
 pub const USER_STACK_SIZE: usize = 8 * 1024;
 // 每个进程的内核栈大小：4KiB
@@ -26,6 +28,8 @@ pub const MAX_THREADS: usize = 64;
 pub const TRAP_CONTEXT_BOTTOM: usize = TRAMPOLINE - MAX_THREADS * PAGE_SIZE;
 // 是否显示debug信息
 pub const DEBUG_MODE: bool = false;
+// 是否启用时间片
+pub const ENABLE_TIMER: bool = false;
 
 // 获取线程在用户空间的trap_context地址
 pub fn task_trap_context_position(tid: usize) -> usize {

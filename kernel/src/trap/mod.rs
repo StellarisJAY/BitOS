@@ -2,7 +2,7 @@ use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::mem::address::VirtAddr;
 use crate::syscall::handle_syscall;
 use crate::task::scheduler::{
-    current_task, current_task_satp, current_task_trap_context, current_task_trap_va,
+    current_task, current_task_satp, current_task_trap_context, current_task_trap_va, cpuid, schedule_idle
 };
 use context::TrapContext;
 use core::arch::asm;
@@ -13,6 +13,7 @@ use riscv::register::scause::{
     Trap::{Exception, Interrupt},
 };
 use riscv::register::{sepc, sstatus, stval, stvec};
+use crate::timer::get_next_trigger;
 
 pub mod context;
 
@@ -55,8 +56,9 @@ pub unsafe fn user_trap_handler() {
             kernel!("user load/store fault, stval: {:#x}", val);
             panic!("load/store fault")
         }
-        // 由machine模式时间中断处理器抛出的S模式软件中断
-        Interrupt(SupervisorSoft) => {}
+        Interrupt(SupervisorSoft) => {
+            schedule_idle()
+        }
         Exception(StorePageFault) => {
             let pcb = current_task().inner.borrow().process.upgrade().unwrap();
             if !pcb.copy_on_write(VirtAddr(val).vpn()) {
