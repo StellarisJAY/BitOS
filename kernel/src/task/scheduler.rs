@@ -107,6 +107,12 @@ pub fn exit_current_task(exit_code: i32) {
     drop(task);
 }
 
+pub fn yield_current_task() {
+    let task = current_task();
+    push_task(task);
+    schedule_idle();
+}
+
 pub fn current_task_translate_buffer<'a>(addr: usize, len: usize) -> Vec<&'a mut [u8]> {
     let processor = PROCESSORS.get(cpuid()).unwrap();
     let p = processor.borrow();
