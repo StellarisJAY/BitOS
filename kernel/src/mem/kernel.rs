@@ -1,7 +1,7 @@
 use super::address::*;
 use super::memory_set::{MapMode, MemPermission, MemoryArea, MemorySet};
 use super::page_table::PageTable;
-use crate::arch::riscv::qemu::layout::UART0;
+use crate::arch::riscv::qemu::layout::MMIO;
 use crate::config::{KERNEL_STACK_BOTTOM, MAX_VA, PAGE_SIZE, PHYS_MEM_LIMIT, TRAMPOLINE};
 use alloc::vec;
 use lazy_static::lazy_static;
@@ -70,16 +70,19 @@ impl MemorySet {
     pub fn init_kernel() {
         let mut memory_set = KERNEL_MEMSET.lock();
         memory_set.map_trampoline();
+
         // 映射低地址的mmio区域
-        memory_set.insert_area(
-            MemoryArea::new(
-                VirtAddr(UART0).vpn(),
-                VirtAddr(stext as usize).vpn(),
-                MapMode::Direct,
-                MemPermission::R.bits() | MemPermission::W.bits(),
-            ),
-            None,
-        );
+        for pair in MMIO {
+            memory_set.insert_area(
+                MemoryArea::new(
+                    VirtAddr(pair.0).vpn(),
+                    VirtAddr(pair.1).vpn(),
+                    MapMode::Direct,
+                    MemPermission::R.bits() | MemPermission::W.bits(),
+                ),
+                None,
+            );
+        }
         // 内核.text段，R|X
         memory_set.insert_area(
             MemoryArea::new(

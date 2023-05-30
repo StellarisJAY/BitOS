@@ -6,3 +6,10 @@ pub const CLINT_MTIMECMP: usize = CLINT0 + 0x4000;
 
 pub const VIRTIO0: usize = 0x10001000;
 pub const SECTOR_SIZE: usize = 512;
+
+// MMIO地址范围
+pub const MMIO: &[(usize, usize)] = &[
+    (UART0, UART0 + 0x1000),
+    (CLINT0, CLINT0 + 0xc000),
+    (VIRTIO0, VIRTIO0 + 0x1000),
+];
