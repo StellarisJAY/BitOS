@@ -9,6 +9,7 @@ use alloc::vec::Vec;
 use alloc::vec;
 use user_lib::sync::mutex::Mutex;
 use user_lib::time::get_time_ms;
+use user_lib::sync::cond::Cond;
 
 struct Point {
     x: isize,
@@ -20,6 +21,7 @@ pub fn main() -> i32 {
     let start = get_time_ms();
     test_create_thread();
     test_mutex();
+    test_cond();
     println!("Thread Test Finish. Time used: {} ms", get_time_ms() - start);
     return 0;
 }
@@ -37,17 +39,29 @@ fn test_create_thread() {
 }
 
 fn test_mutex() {
-    println!("This is Mutex Test");
-    let m = Mutex::new(false);
-    let t1 = user_lib::create_thread(mutex_func1 as usize, &m as *const _ as usize);
-    let t2 = user_lib::create_thread(mutex_func2 as usize, &m as *const _ as usize);
-    println!("thread created: {}, {}", t1, t2);
-    println!("t1 done, exit code: {}", user_lib::wait_tid(t1));
-    println!("t2 done, exit_code: {}", user_lib::wait_tid(t2));
-    unsafe {
-        println!("sum: {}", SUM);
+    let m = Mutex::new(true);
+    let mut threads: Vec<isize> = Vec::new();
+    let start = get_time_ms();
+    for _ in 0..10 {
+        let tid = user_lib::create_thread(mutex_func as usize, &m as *const _ as usize);
+        threads.push(tid);
+        println!("[main] thread-{} created", tid);
     }
-    println!("Mutex Test Sucess");
+    for tid in threads {
+        user_lib::wait_tid(tid);
+        println!("[main] thread-{} finished", tid);
+    }
+    unsafe {
+        println!("Test Finished, time used: {} ms, Sum = {}", get_time_ms() - start, SUM);
+        assert!(SUM == 100_000, "Mutex Teest Failed");
+    }
+}
+
+fn test_cond() {
+    let producer = user_lib::create_thread(producer_func as usize, 0);
+    let consumer = user_lib::create_thread(consumer_func as usize, 0);
+    user_lib::wait_tid(producer);
+    user_lib::wait_tid(consumer);
 }
 
 #[no_mangle]
@@ -75,34 +89,45 @@ fn thread2_func(nums: &Vec<usize>) {
 
 static mut SUM: usize = 0;
 
-#[no_mangle]
-fn mutex_func1(m: &Mutex) {
-    println!("[t1] wait lock");
-    m.lock();
-    println!("[t1] acquired lock");
-    user_lib::yield_();
-    unsafe {
-        for _ in 0..1000 {
-            SUM += 1;
-        }
+fn mutex_func(m: &Mutex) {
+    for _ in 0..10000 {
+        m.lock();
+        unsafe{SUM += 1;}
+        m.unlock();
     }
-    user_lib::yield_();
-    m.unlock();
-    println!("[t1] exit");
     user_lib::exit(0);
 }
 
-#[no_mangle]
-fn mutex_func2(m: &Mutex) {
-    println!("[t2] wait lock");
-    m.lock();
-    println!("[t2] acquired lock");
-    unsafe {
-        for _ in 0..1000 {
-            SUM += 1;
-        }
+
+use lazy_static::lazy_static;
+static mut STORAGE: usize = 0;
+
+lazy_static! {
+    static ref MUTEX: Mutex = Mutex::new(false);
+}
+
+lazy_static! {
+    static ref COND: Cond = Cond::new(&MUTEX);
+}
+
+fn producer_func() {
+    MUTEX.lock();
+    unsafe{
+        STORAGE = 1;
+        println!("[producer] send: {}", STORAGE);
     }
-    m.unlock();
-    println!("[t2] exit");
+    MUTEX.unlock();
+    user_lib::exit(0);
+}
+
+fn consumer_func() {
+    MUTEX.lock();
+    unsafe {
+        while STORAGE == 0 {
+            COND.wait();
+        }
+        println!("[consumer] recv: {}", STORAGE);
+    }
+    MUTEX.unlock();
     user_lib::exit(0);
 }
