@@ -115,3 +115,15 @@ pub fn mutex_lock(id: isize) {
 pub fn mutex_unlock(id: isize) {
     syscall::mutex_unlock(id);
 }
+
+pub fn cond_create() -> isize {
+    syscall::cond_create()
+}
+
+pub fn cond_signal(id: isize) -> isize {
+    syscall::cond_signal(id)
+}
+
+pub fn cond_wait(id: isize, mutex: isize) -> isize {
+    syscall::cond_wait(id, mutex)
+}

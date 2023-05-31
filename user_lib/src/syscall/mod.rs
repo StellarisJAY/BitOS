@@ -16,6 +16,9 @@ const SYSCALL_WAITTID: usize = 1001;
 const SYSCALL_MUTEX_CREATE: usize = 1010;
 const SYSCALL_MUTEX_LOCK: usize = 1011;
 const SYSCALL_MUTEX_UNLOCK: usize = 1012;
+const SYSCALL_COND_CREATE: usize = 1030;
+const SYSCALL_COND_WAIT: usize = 1032;
+const SYSCALL_COND_SIGNAL: usize = 1031;
 
 // ecall 系统调用
 fn ecall(id: usize, args: [usize; 3]) -> isize {
@@ -80,4 +83,16 @@ pub fn mutex_unlock(id: isize) -> isize {
 
 pub fn get_time(res_ptr: usize) -> isize {
     ecall(SYSCALL_GET_TIME, [res_ptr, 0, 0])
+}
+
+pub fn cond_create() -> isize {
+    ecall(SYSCALL_COND_CREATE, [0,0,0])
+}
+
+pub fn cond_signal(id: isize) -> isize {
+    ecall(SYSCALL_COND_SIGNAL, [id as usize, 0, 0])
+}
+
+pub fn cond_wait(id: isize, mutex: isize) -> isize {
+    ecall(SYSCALL_COND_WAIT, [id as usize, mutex as usize, 0])
 }

@@ -15,4 +15,8 @@ impl Mutex {
     pub fn unlock(&self) {
         mutex_unlock(self.0);
     }
+
+    pub fn id(&self) -> isize {
+        self.0
+    }
 }
