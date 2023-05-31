@@ -107,6 +107,15 @@ pub fn exit_current_task(exit_code: i32) {
     drop(task);
 }
 
+pub fn block_current_task() {
+    let task = current_task();
+    let mut task_inner = task.inner.borrow();
+    task_inner.status = TaskStatus::Blocked;
+    drop(task_inner);
+    push_task(task);
+    schedule_idle();
+}
+
 pub fn yield_current_task() {
     let task = current_task();
     push_task(task);
@@ -188,7 +197,19 @@ impl TaskManager {
     }
 
     pub fn pop(&mut self) -> Option<Arc<TaskControlBlock>> {
-        return self.queue.pop_front();
+        let poped = self.queue
+        .iter()
+        .enumerate()
+        .find(|(i, task)| {
+            let inner = task.inner.borrow();
+            inner.status == TaskStatus::Ready
+        })
+        .map(|(i, _)| i);
+        if let Some(idx) = poped {
+            return Some(self.queue.swap_remove_front(idx).unwrap());
+        }else {
+            return None;
+        }
     }
 }
 

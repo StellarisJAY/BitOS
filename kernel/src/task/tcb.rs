@@ -19,6 +19,7 @@ use alloc::vec::Vec;
 pub enum TaskStatus {
     Ready,
     Running,
+    Blocked,
     Exit,
 }
 
@@ -193,6 +194,10 @@ impl TaskControlBlock {
 
     pub fn tid(&self) -> usize {
         self.tid
+    }
+
+    pub fn wake_up(&self) {
+        self.inner.borrow().status = TaskStatus::Ready;
     }
 }
 
