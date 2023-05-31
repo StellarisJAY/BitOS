@@ -1,2 +1,3 @@
 build:
-	cargo build --release
+	@cargo build --release
+	@rm -r ../kernel/target
