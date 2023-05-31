@@ -22,6 +22,10 @@ const SYSCALL_MUTEX_CREATE: usize = 1010;
 const SYSCALL_MUTEX_LOCK: usize = 1011;
 const SYSCALL_MUTEX_UNLOCK: usize = 1012;
 
+const SYSCALL_COND_CREATE: usize = 1030;
+const SYSCALL_COND_WAIT: usize = 1032;
+const SYSCALL_COND_SIGNAL: usize = 1031;
+
 pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
     match id {
         SYSCALL_WRITE => {
@@ -39,6 +43,9 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         SYSCALL_MUTEX_LOCK => sync::mutex_lock(args[0] as isize),
         SYSCALL_MUTEX_UNLOCK => sync::mutex_unlock(args[0] as isize),
         SYSCALL_GET_TIME => time::syscall_get_time(args[0]),
+        SYSCALL_COND_CREATE => sync::cond_create(),
+        SYSCALL_COND_SIGNAL => sync::cond_signal(args[0] as isize),
+        SYSCALL_COND_WAIT => sync::cond_wait(args[0] as isize, args[1] as isize),
         _ => {
             debug!("unsupported syscall: {}", id);
             panic!("unsupported syscall");
