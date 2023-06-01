@@ -8,9 +8,12 @@ use crate::task::tcb::TaskControlBlock;
 use crate::task::tid::TidAllocator;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::vec;
 use core::cell::RefMut;
 use crate::sync::mutex::Mutex;
 use crate::sync::cond::Cond;
+use crate::fs::File;
+use crate::fs::stdio::{Stdin, Stdout};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ProcessState {
@@ -38,6 +41,7 @@ pub struct InnerPCB {
     pub tasks: Vec<Arc<TaskControlBlock>>,
     pub mutex_table: Vec<Option<Arc<dyn Mutex>>>, // 进程持有的mutex表，option表示一个mutex槽位是否空闲
     pub cond_table: Vec<Option<Arc<Cond>>>,
+    pub fd_table: Vec<Option<Arc<dyn File>>>,     // 进程持有的fd表
 }
 
 impl ProcessControlBlock {
@@ -60,6 +64,11 @@ impl ProcessControlBlock {
             tasks: Vec::with_capacity(MAX_THREADS),
             mutex_table: Vec::new(),
             cond_table: Vec::new(),
+            fd_table: vec![
+                Some(Arc::new(Stdin{})),    // fd=0, stdin
+                Some(Arc::new(Stdout{})),   // fd=1, stdout
+                Some(Arc::new(Stdout{})),   // fd=2, stderr -> stdout
+            ],
         };
         let proc = Arc::new(Self {
             pid: pid,
@@ -82,6 +91,16 @@ impl ProcessControlBlock {
         let memset = MemorySet::from_parent(&p_inner.memory_set, parent.stack_base);
         let kernel_satp = crate::mem::kernel::kernel_satp();
 
+        // 拷贝父进程的fd
+        let mut fd_table: Vec<Option<Arc<dyn File>>> = Vec::new();
+        for item in p_inner.fd_table.iter() {
+            if let Some(fd) = item {
+                fd_table.push(Some(Arc::clone(fd)));
+            }else {
+                fd_table.push(None);
+            }
+        }
+
         let mut inner = InnerPCB {
             mem_size: p_inner.mem_size,
             memory_set: memset,
@@ -93,6 +112,7 @@ impl ProcessControlBlock {
             tasks: Vec::new(),
             mutex_table: Vec::new(),
             cond_table: Vec::new(),
+            fd_table: fd_table,
         };
         let pcb = Arc::new(ProcessControlBlock {
             stack_base: parent.stack_base,

@@ -1,38 +1,22 @@
-use crate::console::print_buf;
-use crate::driver::uart::get_char;
-use crate::task::scheduler::current_task_translate_buffer;
+use crate::task::scheduler::current_proc;
 
-const FD_STDIN: usize = 0;
-const FD_STDOUT: usize = 1;
 
 pub fn sys_write(fd: usize, buf_ptr: usize, len: usize) -> isize {
-    match fd {
-        FD_STDOUT => {
-            let buffers = current_task_translate_buffer(buf_ptr, len);
-            for buf in buffers {
-                print_buf(buf);
-            }
-            return len as isize;
-        }
-        _ => panic!("unsupported fd for write"),
+    let proc = current_proc();
+    let inner_pcb = proc.borrow_inner();
+    if let Some(fd) = inner_pcb.fd_table[fd].as_ref() {
+        let buf = inner_pcb.memory_set.translate_buffer(buf_ptr, len); // buf_ptr是进程地址空间的地址，需要转换成kernel地址空间的buf
+        return fd.write(buf) as isize;
     }
+    0
 }
 
 pub fn sys_read(fd: usize, buf_ptr: usize, len: usize) -> isize {
-    match fd {
-        FD_STDIN => {
-            assert!(len == 1, "currently only supports one byte per read");
-            let mut buf = current_task_translate_buffer(buf_ptr, len);
-            loop {
-                if let Some(byte) = get_char() {
-                    unsafe {
-                        buf[0].as_mut_ptr().write_volatile(byte);
-                        return 1;
-                    }
-                }
-            }
-        }
-        _ => panic!("unsupported fd for read"),
+    let proc = current_proc();
+    let inner_pcb = proc.borrow_inner();
+    if let Some(fd) = inner_pcb.fd_table[fd].as_ref() {
+        let buf = inner_pcb.memory_set.translate_buffer(buf_ptr, len);
+        return fd.read(buf) as isize;
     }
     0
 }
