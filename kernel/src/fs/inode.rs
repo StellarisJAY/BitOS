@@ -93,7 +93,7 @@ impl File for OSInode {
         }
         return offset;
     }
-    fn write<'a>(&self, buf: Vec<&'a [u8]>) -> usize {
+    fn write<'a>(&self, buf: Vec<&'a mut [u8]>) -> usize {
         let inner = self.inner.lock();
         let mut offset: usize = 0;
         for slice in buf.iter() {
