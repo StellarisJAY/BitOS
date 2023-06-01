@@ -1,5 +1,7 @@
 pub mod uart;
 pub mod virtio;
-pub mod virtio_block;
+pub mod blk;
 
-pub fn init() {}
+pub fn init() {
+    blk::init_blk();
+}

@@ -29,7 +29,6 @@ pub struct VirtQueueAvail {
     pub flags: u16,
     pub idx: u16,
     pub ring: [u16; QUEUE_SIZE],
-    pub used_event: u16,
 }
 
 // UsedElem，已经处理完的buffer
@@ -50,11 +49,11 @@ pub struct VirtQueueUsed {
 
 #[repr(C, align(4096))]
 pub struct VirtQueue {
-    desc: [VirtQueueDesc; QUEUE_SIZE],
-    avail: VirtQueueAvail,
-    used: VirtQueueUsed,
+    pub desc: [VirtQueueDesc; QUEUE_SIZE],
+    pub avail: VirtQueueAvail,
+    pub used: VirtQueueUsed,
     free_descs: [bool; QUEUE_SIZE],
-    used_idx: u16,
+    pub used_idx: u16,
 }
 
 impl VirtQueue {
@@ -98,6 +97,9 @@ impl VirtQueue {
 
         status |= VIRTIO_CONFIG_S_FEATURES_OK;
         write(VIRTIO_MMIO_STATUS, status);
+        // 设置DRIVER_OK，driver初始化结束
+        status |= VIRTIO_CONFIG_S_DRIVER_OK;
+        write(VIRTIO_MMIO_STATUS, status);
 
         // 配置当前virt_queue, see: virtio-v1.1.pdf，4.2.3.2
         write(VIRTIO_MMIO_QUEUE_SEL, queue_sel);
@@ -122,13 +124,10 @@ impl VirtQueue {
         write(VIRTIO_MMIO_QUEUE_DEVICE_LOW, used_addr as u32);
         write(VIRTIO_MMIO_QUEUE_DEVICE_HIGH, (used_addr >> 32) as u32);
         write(VIRTIO_MMIO_QUEUE_READY, 1);
-        // 设置DRIVER_OK，driver初始化结束
-        status |= VIRTIO_CONFIG_S_DRIVER_OK;
-        write(VIRTIO_MMIO_STATUS, status);
         fence(Ordering::SeqCst);
     }
 
-    pub unsafe fn add(&mut self, inputs: &[&[u8]]) -> Option<u16> {
+    pub unsafe fn add(&mut self, inputs: &[&[u8]], writes: &[bool]) -> Option<u16> {
         if inputs.is_empty() {
             return None;
         }
@@ -139,7 +138,9 @@ impl VirtQueue {
             let idx = descs[i] as usize;
             self.desc[idx].addr = (*buf).as_ptr() as u64;
             self.desc[idx].len = (*buf).len() as u32;
-            self.desc[idx].flags = VIRTQ_DESC_FLAG_WRITE;
+            if writes[i] {
+                self.desc[idx].flags = VIRTQ_DESC_FLAG_WRITE;
+            }
             if i == inputs.len() - 1 {
                 self.desc[idx].next = 0;
             } else {
@@ -147,10 +148,7 @@ impl VirtQueue {
                 self.desc[idx].next = descs[i + 1];
             }
         });
-        debug!(
-            "{} {}",
-            self.desc[head as usize].addr, self.desc[head as usize].len
-        );
+
         // desc链放入avail vring
         let avail_idx = self.avail.idx as usize % QUEUE_SIZE;
         self.avail.ring[avail_idx] = head;
@@ -159,6 +157,10 @@ impl VirtQueue {
         self.avail.idx += 1;
         fence(Ordering::SeqCst);
         Some(head)
+    }
+
+    pub unsafe fn notify(&self, sel: u32) {
+        write(VIRTIO_MMIO_QUEUE_NOTIFY, sel);
     }
 
     pub fn can_pop(&self) -> bool {
@@ -229,7 +231,6 @@ impl VirtQueueAvail {
             flags: 0,
             idx: 0,
             ring: [0; QUEUE_SIZE],
-            used_event: 0,
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::File;
-use crate::driver::virtio_block::BLOCK_DEVICE;
+use crate::driver::blk::BLOCK_DEVICE;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::bitflags;
