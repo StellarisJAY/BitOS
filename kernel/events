@@ -1,0 +1,12 @@
+virtio_blk_req_complete
+virtio_blk_rw_complete
+virtio_blk_handle_write
+virtio_blk_handle_read
+virtio_queue_notify
+virtio_mmio_guest_page
+virtio_mmio_queue_write
+virtio_mmio_setting_irq
+virtqueue_alloc_element
+virtqueue_fill
+virtqueue_flush
+virtqueue_pop

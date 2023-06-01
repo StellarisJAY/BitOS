@@ -7,6 +7,7 @@ CPUS = 1
 LEGACY_VIRTIO = false
 QEMU = qemu-system-riscv64
 DUMP_DTB = -machine dumpdtb=riscv64-virt.dtb
+QEMU_TRACE_EVENTS = -trace events=./events,file=./trace.log
 QEMU_OPTS = -machine virt \
 	    -bios none \
 	    -kernel $(TARGET)kernel.bin \
@@ -23,6 +24,8 @@ objdump:
 	@$(TOOL)objdump -d $(TARGET)kernel
 qemu:bin
 	@$(QEMU) $(QEMU_OPTS)
+trace:bin
+	@$(QEMU) $(QEMU_TRACE_EVENTS) $(QEMU_OPTS)
 debug:bin
 	@$(QEMU) $(QEMU_OPTS) -s -S
 gdb:
