@@ -21,6 +21,11 @@ pub fn print_buf(buf: &[u8]) {
     drop(uart);
 }
 
+pub fn get_char() -> Option<u8> {
+    let mut uart = UART.lock();
+    uart.get()
+}
+
 pub fn debug(args: Arguments) {
     if crate::config::DEBUG_MODE {
         print_str("[debug] ");
