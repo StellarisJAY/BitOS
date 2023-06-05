@@ -12,6 +12,7 @@ QEMU_OPTS = -machine virt \
 	    -bios none \
 	    -kernel $(TARGET)kernel.bin \
 	    -smp $(CPUS) \
+	    -D ./qemu.log\
 	    -global virtio-mmio.force-legacy=$(LEGACY_VIRTIO) \
 	    -drive file=$(FS_IMG),if=none,format=raw,id=x0 \
 	    -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
@@ -25,6 +26,7 @@ objdump:
 qemu:bin
 	@$(QEMU) $(QEMU_OPTS)
 trace:bin
+	@rm trace.log
 	@$(QEMU) $(QEMU_TRACE_EVENTS) $(QEMU_OPTS)
 debug:bin
 	@$(QEMU) $(QEMU_OPTS) -s -S
