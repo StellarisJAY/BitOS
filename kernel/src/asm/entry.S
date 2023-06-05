@@ -7,7 +7,7 @@ __entry:
     # 读取当前的cpu核心id到a1
     csrr a1, mhartid
     # 第i个cpu的栈顶 = stack_bottom + (i + 1) * 8192
-    li a0, 8192
+    li a0, 16384
     addi a1, a1, 1
     mul a1, a1, a0
     add sp, sp, a1
@@ -20,6 +20,6 @@ __entry:
 .align 4
 .global boot_stack_bottom
 boot_stack_bottom:
-    .space 8192 * 4
+    .space 16384 * 4
     .global boot_stack_top
 boot_stack_top:

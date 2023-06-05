@@ -1,6 +1,6 @@
 pub const CPUS: usize = 1;
-pub const PHYS_MEM_LIMIT: usize = 0x88000000; // 内存大小=2GB
-pub const KERNEL_HEAP_SIZE: usize = 0x00100000;
+pub const PHYS_MEM_LIMIT: usize = 0x8800_0000;
+pub const KERNEL_HEAP_SIZE: usize = 0x100_0000;
 pub const PAGE_SIZE: usize = 4096;
 
 pub const TIME_FREQ: usize = 10000000;
