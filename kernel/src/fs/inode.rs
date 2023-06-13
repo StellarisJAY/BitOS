@@ -1,4 +1,4 @@
-use super::File;
+use super::{File, UserBuffer};
 use crate::driver::blk::BLOCK_DEVICE;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -84,22 +84,22 @@ impl OSInode {
 }
 
 impl File for OSInode {
-    fn read<'a>(&self, mut buf: Vec<&'a mut [u8]>) -> usize {
+    fn read<'a>(&self, buf: &mut UserBuffer) -> usize {
         let inner = self.inner.lock();
         let mut offset: usize = 0;
-        for slice in buf.iter_mut() {
-            inner.inode.read(offset as u32, *slice);
-            offset += (*slice).len();
-        }
+        buf.foreach(|bytes| {
+            inner.inode.read(offset as u32, bytes);
+            offset += bytes.len();
+        });
         return offset;
     }
-    fn write<'a>(&self, buf: Vec<&'a mut [u8]>) -> usize {
+    fn write<'a>(&self, buf: &mut UserBuffer) -> usize {
         let inner = self.inner.lock();
         let mut offset: usize = 0;
-        for slice in buf.iter() {
-            inner.inode.write(offset as u32, *slice);
-            offset += (*slice).len();
-        }
+        buf.foreach(|bytes| {
+            inner.inode.write(offset as u32, bytes);
+            offset += bytes.len();
+        });
         return offset;
     }
 }
