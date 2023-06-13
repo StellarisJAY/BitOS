@@ -181,6 +181,20 @@ impl ProcessControlBlock {
     pub fn dealloc_tid(&self, tid: usize) {
         self.borrow_inner().tid_allocator.dealloc(tid);
     }
+
+    pub fn alloc_fd(&self) -> usize {
+        let mut inner = self.borrow_inner();
+        if let Some(fd) = inner.fd_table
+        .iter()
+        .enumerate()
+        .find(|(_, item)| item.is_none())
+        .map(|(idx, _)| idx) {
+            return fd;
+        }else {
+            inner.fd_table.push(None);
+            return inner.fd_table.len() - 1;
+        }
+    }
 }
 
 impl Drop for ProcessControlBlock {
