@@ -26,6 +26,7 @@ mod task;
 mod trap;
 mod timer;
 mod shutdown;
+mod ipc;
 
 global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));

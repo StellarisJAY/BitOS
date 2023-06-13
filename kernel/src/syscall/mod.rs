@@ -3,6 +3,7 @@ pub mod proc;
 pub mod task;
 pub mod sync;
 pub mod time;
+pub mod ipc;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
@@ -25,6 +26,8 @@ const SYSCALL_MUTEX_UNLOCK: usize = 1012;
 const SYSCALL_COND_CREATE: usize = 1030;
 const SYSCALL_COND_WAIT: usize = 1032;
 const SYSCALL_COND_SIGNAL: usize = 1031;
+
+const SYSCALL_PIPE: usize = 59;
 
 pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
     match id {
