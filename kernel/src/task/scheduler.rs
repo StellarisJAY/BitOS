@@ -1,7 +1,10 @@
 use super::context::TaskContext;
+use super::manager::fifo::FIFOTaskManager;
+use super::manager::stride::StrideManager;
+use super::manager::TaskManager;
 use super::tcb::{TaskControlBlock, TaskStatus};
 use crate::arch::riscv::register::read_tp;
-use crate::config::{task_trap_context_position, CPUS};
+use crate::config::{task_trap_context_position, ManagerType, CPUS, TASK_MANAGER};
 use crate::proc::pcb::{ProcessControlBlock, ProcessState};
 use crate::proc::pid::Pid;
 use crate::sync::cell::SafeCell;
@@ -13,12 +16,6 @@ use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
 
-// FIFO任务管理器
-pub struct TaskManager {
-    queue: VecDeque<Arc<TaskControlBlock>>, // FIFO队列
-    processes: BTreeMap<usize, Arc<ProcessControlBlock>>,
-}
-
 // 处理器，负责调度运行一个任务
 pub struct Processor {
     idle_ctx: TaskContext,
@@ -26,7 +23,15 @@ pub struct Processor {
 }
 
 lazy_static! {
-    pub static ref MANAGER: SpinMutex<TaskManager> = SpinMutex::new(TaskManager::new());
+    pub static ref MANAGER: SpinMutex<Arc<dyn TaskManager>> = {
+        let manager: Arc<dyn TaskManager>;
+        // 可选不同类型的调度器
+        match TASK_MANAGER {
+            ManagerType::FIFO => manager = Arc::new(FIFOTaskManager::new()),
+            ManagerType::STRIDE => manager = Arc::new(StrideManager::new()),
+        }
+        SpinMutex::new(manager)
+    };
 }
 
 lazy_static! {
@@ -161,56 +166,19 @@ pub fn current_proc() -> Arc<ProcessControlBlock> {
 }
 
 pub fn push_task(task: Arc<TaskControlBlock>) {
-    MANAGER.lock().push(Arc::clone(&task));
+    MANAGER.lock().push_task(Arc::clone(&task));
 }
 
 pub fn pop_task() -> Option<Arc<TaskControlBlock>> {
-    MANAGER.lock().pop()
+    MANAGER.lock().pop_task()
 }
 
 pub fn add_process(process: Arc<ProcessControlBlock>) {
-    MANAGER.lock().processes.insert(process.pid(), process);
+    MANAGER.lock().add_process(process);
 }
 
 pub fn remove_process(pid: usize) {
-    MANAGER.lock().processes.remove(&pid);
-}
-
-pub fn find_process(pid: usize) -> Option<Arc<ProcessControlBlock>> {
-    MANAGER
-        .lock()
-        .processes
-        .get(&pid)
-        .map(|pcb| Arc::clone(pcb))
-}
-
-impl TaskManager {
-    pub fn new() -> Self {
-        return Self {
-            queue: VecDeque::new(),
-            processes: BTreeMap::new(),
-        };
-    }
-
-    pub fn push(&mut self, task: Arc<TaskControlBlock>) {
-        self.queue.push_back(Arc::clone(&task));
-    }
-
-    pub fn pop(&mut self) -> Option<Arc<TaskControlBlock>> {
-        let poped = self.queue
-        .iter()
-        .enumerate()
-        .find(|(i, task)| {
-            let inner = task.inner.borrow();
-            inner.status == TaskStatus::Ready
-        })
-        .map(|(i, _)| i);
-        if let Some(idx) = poped {
-            return Some(self.queue.swap_remove_front(idx).unwrap());
-        }else {
-            return None;
-        }
-    }
+    MANAGER.lock().remove_process(pid);
 }
 
 extern "C" {

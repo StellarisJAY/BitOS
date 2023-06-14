@@ -33,6 +33,15 @@ pub const DEBUG_MODE: bool = false;
 // 是否启用时间片
 pub const ENABLE_TIMER: bool = true;
 
+pub const PRIORITY_DIVIDER: usize = 10000;
+
+pub enum ManagerType {
+    FIFO,
+    STRIDE,
+}
+
+pub const TASK_MANAGER: ManagerType = ManagerType::FIFO;
+
 // 获取线程在用户空间的trap_context地址
 pub fn task_trap_context_position(tid: usize) -> usize {
     TRAMPOLINE - (tid + 1) * PAGE_SIZE
