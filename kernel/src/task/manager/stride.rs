@@ -22,6 +22,7 @@ struct TCBHolder (Arc<TaskControlBlock>);
 
 impl StrideManager {
     pub fn new() -> Self {
+        kernel!("using Stride scheduling");
         Self {
             inner: SafeCell::new(StrideManagerInner {
                 pqueue: BinaryHeap::new(),
@@ -35,7 +36,7 @@ impl TaskManager for StrideManager {
 
     fn push_task(&self, task: Arc<TaskControlBlock>) {
         let mut inner = self.inner.borrow();
-        inner.pqueue.push(TCBHolder(Arc::clone(&task)));
+        inner.pqueue.push(TCBHolder(task));
     }
 
     fn pop_task(&self) -> Option<Arc<TaskControlBlock>> {

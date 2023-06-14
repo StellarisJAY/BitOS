@@ -166,7 +166,7 @@ pub fn current_proc() -> Arc<ProcessControlBlock> {
 }
 
 pub fn push_task(task: Arc<TaskControlBlock>) {
-    MANAGER.lock().push_task(Arc::clone(&task));
+    MANAGER.lock().push_task(task);
 }
 
 pub fn pop_task() -> Option<Arc<TaskControlBlock>> {

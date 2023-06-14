@@ -17,6 +17,7 @@ struct FIFOManagerInner {
 
 impl FIFOTaskManager {
     pub fn new() -> Self {
+        kernel!("using FIFO scheduling");
         return Self {
             inner: SafeCell::new(FIFOManagerInner {
                 queue: VecDeque::new(),
@@ -29,7 +30,7 @@ impl FIFOTaskManager {
 impl TaskManager for FIFOTaskManager {
     fn push_task(&self, task: Arc<TaskControlBlock>) {
         let mut inner = self.inner.borrow();
-        inner.queue.push_back(Arc::clone(&task));
+        inner.queue.push_back(task);
     }
 
     fn pop_task(&self) -> Option<Arc<TaskControlBlock>> {

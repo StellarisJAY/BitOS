@@ -138,9 +138,9 @@ impl ProcessControlBlock {
             parent_task.unwrap(),
             Arc::clone(&parent),
         ));
-        pcb.borrow_inner().tasks.push(Arc::clone(&child_task));
         // 提交线程给调度器
         push_task(Arc::clone(&child_task));
+        pcb.borrow_inner().tasks.push(child_task);
         return pcb;
     }
 
