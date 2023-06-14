@@ -13,19 +13,27 @@ pub fn create_thread(entry: usize, arg: usize) -> usize {
 
 pub fn wait_tid(tid: usize) -> isize {
     let pcb = current_proc();
-    let tasks = &pcb.borrow_inner().tasks;
-    for tcb in tasks {
+    let mut inner_pcb = pcb.borrow_inner();
+    let mut idx = 0;
+    let mut code = -1;
+    for tcb in inner_pcb.tasks.iter() {
         if tcb.tid() == tid {
             let inner = tcb.inner.borrow();
             if inner.status == TaskStatus::Exit {
-                match inner.exit_code {
+                code = match inner.exit_code {
                     None => return 0,
                     Some(code) => return code,
                 }
             } else {
-                return -2;
+                code =  -2;
             }
+            break;
         }
+        idx += 1;
     }
-    return -3;
+    // waittid结束后删除线程引用
+    if code != -2 && code != -1 {
+        inner_pcb.tasks.swap_remove(idx);
+    }
+    return code;
 }
