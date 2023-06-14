@@ -6,9 +6,9 @@ pub const RESET_TYPE_WARM_REBOOT: usize = 0x0000_0002;
 pub const RESET_REASON_NO_REASON: usize = 0x0000_0000;
 pub const RESET_REASON_SYSTEM_FAILURE: usize = 0x0000_0001;
 
-const TEST_FAIL:u32 = 0x3333;
-const TEST_PASS:u32 = 0x5555;
-const TEST_RESET:u32 = 0x7777;
+const TEST_FAIL: u32 = 0x3333;
+const TEST_PASS: u32 = 0x5555;
+const TEST_RESET: u32 = 0x7777;
 
 pub fn system_reset(reset_type: usize, reset_reason: usize) {
     const VIRT_TEST: *mut u32 = SHUTDOWN0 as *mut u32;

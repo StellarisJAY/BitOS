@@ -1,6 +1,5 @@
+pub mod blk;
 pub mod uart;
 pub mod virtio;
-pub mod blk;
 
-pub fn init() {
-}
+pub fn init() {}

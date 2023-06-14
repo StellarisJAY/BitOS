@@ -1,9 +1,9 @@
 pub mod virtio_block;
 
-use lazy_static::lazy_static;
 use alloc::sync::Arc;
-use virtio_block::VirtIOBlock;
+use lazy_static::lazy_static;
 use simplefs::block_device::BlockDevice;
+use virtio_block::VirtIOBlock;
 
 lazy_static! {
     pub static ref BLOCK_DEVICE: Arc<dyn BlockDevice> = unsafe {

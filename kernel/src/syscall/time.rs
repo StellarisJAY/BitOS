@@ -1,10 +1,10 @@
-use crate::timer::get_time;
-use crate::task::scheduler::current_task;
 use crate::config::{TIME_FREQ_MS, TIME_FREQ_US};
+use crate::task::scheduler::current_task;
+use crate::timer::get_time;
 #[repr(C)]
 struct TimerResult {
     msec: usize,
-    usec: usize
+    usec: usize,
 }
 
 pub fn syscall_get_time(res: usize) -> isize {

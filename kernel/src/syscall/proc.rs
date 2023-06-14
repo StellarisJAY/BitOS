@@ -2,7 +2,7 @@ use crate::proc::loader::load_kernel_app;
 use crate::proc::pcb::{ProcessControlBlock, ProcessState};
 use crate::task::scheduler::{
     add_process, current_task, current_task_translate_buffer, current_task_trap_context,
-    exit_current_task, find_process, push_task, remove_process, schedule_idle,
+    exit_current_task, push_task, remove_process, schedule_idle,
 };
 use alloc::string::String;
 use alloc::sync::Arc;

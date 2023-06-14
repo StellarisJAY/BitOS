@@ -1,6 +1,6 @@
-use alloc::vec::Vec;
-use crate::task::scheduler::current_proc;
 use crate::config::PAGE_SIZE;
+use crate::task::scheduler::current_proc;
+use alloc::vec::Vec;
 
 pub mod inode;
 pub mod stdio;
@@ -22,7 +22,10 @@ impl<'a> UserBuffer<'_> {
         for b in &buffer {
             len += b.len();
         }
-        return Self{array: buffer, len: len};
+        return Self {
+            array: buffer,
+            len: len,
+        };
     }
 
     #[inline]
@@ -39,7 +42,7 @@ impl<'a> UserBuffer<'_> {
         for i in start_idx..(end_idx + 1) {
             if i == end_idx {
                 r = end_off;
-            }else {
+            } else {
                 r = self.array[i].len();
             }
             self.array[i][l..r].copy_from_slice(&data[data_off..(data_off + r - l)]);
@@ -57,7 +60,7 @@ impl<'a> UserBuffer<'_> {
         for i in start_idx..(end_idx + 1) {
             if i == end_idx {
                 r = end_off;
-            }else {
+            } else {
                 r = self.array[i].len();
             }
             data[data_off..(data_off + r - l)].copy_from_slice(&self.array[i][l..r]);
@@ -79,14 +82,14 @@ impl<'a> UserBuffer<'_> {
         if offset < self.array[0].len() {
             start_idx = 0;
             start_off = offset;
-        }else {
+        } else {
             start_idx = (offset - self.array[0].len()) / PAGE_SIZE + 1;
             start_off = (offset - self.array[0].len()) % PAGE_SIZE;
         }
         if end <= self.array[0].len() {
             end_idx = 0;
             end_off = end;
-        }else {
+        } else {
             end_idx = (end - self.array[0].len()) / PAGE_SIZE + 1;
             end_off = (end - self.array[0].len()) % PAGE_SIZE;
         }

@@ -1,7 +1,7 @@
 use super::{File, UserBuffer};
-use alloc::vec::Vec;
-use crate::console::{print_buf, get_char};
+use crate::console::{get_char, print_buf};
 use crate::task::scheduler::yield_current_task;
+use alloc::vec::Vec;
 
 pub struct Stdin;
 pub struct Stdout;
@@ -14,14 +14,14 @@ impl File for Stdin {
                 let data: [u8; 1] = [ch];
                 buf.write(0, &data);
                 break;
-            }else {
+            } else {
                 yield_current_task();
                 continue;
             }
         }
         0
     }
-    
+
     fn write<'a>(&self, buf: &mut UserBuffer) -> usize {
         panic!("can not write stdin")
     }
@@ -31,7 +31,7 @@ impl File for Stdout {
     fn read<'a>(&self, buf: &mut UserBuffer) -> usize {
         panic!("can not read stdout")
     }
-    
+
     fn write<'a>(&self, buf: &mut UserBuffer) -> usize {
         let mut sum = 0;
         buf.foreach(|bytes| {

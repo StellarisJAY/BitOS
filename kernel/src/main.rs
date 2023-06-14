@@ -18,15 +18,15 @@ mod arch;
 mod config;
 mod driver;
 mod fs;
+mod ipc;
 mod mem;
 mod proc;
+mod shutdown;
 mod sync;
 mod syscall;
 mod task;
-mod trap;
 mod timer;
-mod shutdown;
-mod ipc;
+mod trap;
 
 global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));
@@ -65,7 +65,7 @@ pub fn rust_start() {
 
 use core::sync::atomic::AtomicU8;
 use core::sync::atomic::Ordering;
-use timer::{get_time, get_next_trigger};
+use timer::{get_next_trigger, get_time};
 
 static KERNEL_INITED: AtomicU8 = AtomicU8::new(0);
 

@@ -1,6 +1,6 @@
-use crate::driver::virtio::*;
 use crate::arch::riscv::qemu::layout::SECTOR_SIZE;
 use crate::config::PAGE_SIZE;
+use crate::driver::virtio::*;
 use crate::mem::address::*;
 use alloc::sync::Arc;
 use array_macro::array;
@@ -38,11 +38,11 @@ impl VirtIOBlock {
                 return features;
             });
     }
-    
+
     pub fn read_block(&self, block_id: u32, data: &mut [u8]) {
         assert_eq!(data.len(), SECTOR_SIZE, "read blk buffer must be 512 Bytes");
         let sector = blockid_to_sector_offset(block_id);
-        let mut req = VirtIOBlkReq{
+        let mut req = VirtIOBlkReq {
             type_: VIRTIO_BLK_OP_IN,
             reserved: 0,
             sector: sector as u64,
@@ -111,9 +111,9 @@ impl VirtIOBlkReq {
 
 impl VirtIOBlkResp {
     const fn new() -> Self {
-        Self{status: 0xff}
+        Self { status: 0xff }
     }
-    
+
     fn as_bytes(&self) -> &[u8] {
         unsafe {
             let addr = self as *const _ as usize;

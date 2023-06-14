@@ -1,6 +1,6 @@
-use crate::config::{CPUS, TIME_FREQ};
 use crate::arch::riscv::register::*;
-use riscv::register::{mhartid, mscratch, mtvec, mstatus, mie};
+use crate::config::{CPUS, TIME_FREQ};
+use riscv::register::{mhartid, mie, mscratch, mstatus, mtvec};
 
 static mut TIMER_SCRATCH: [[usize; 5]; CPUS] = [[0; 5]; CPUS];
 
@@ -11,19 +11,19 @@ pub unsafe fn timer_init() {
     TIMER_SCRATCH[id][3] = mtime_cmp_addr(id);
     TIMER_SCRATCH[id][4] = interval;
     mscratch::write(TIMER_SCRATCH[id].as_ptr() as usize);
-    
+
     extern "C" {
         fn timervec();
     }
-    
+
     mtvec::write(timervec as usize, riscv::register::utvec::TrapMode::Direct);
-    
+
     mstatus::set_mie();
     mie::set_mtimer();
 }
 
 pub fn get_time() -> usize {
-    unsafe {read_mtime()}
+    unsafe { read_mtime() }
 }
 
 pub fn add_timer(hartid: usize, interval: usize) {
@@ -33,7 +33,5 @@ pub fn add_timer(hartid: usize, interval: usize) {
 }
 
 pub fn get_next_trigger(mhartid: usize) -> usize {
-    unsafe {
-        read_mtimecmp(mhartid)
-    }
+    unsafe { read_mtimecmp(mhartid) }
 }

@@ -1,8 +1,10 @@
+use crate::arch::riscv::register::clear_sip_soft;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::mem::address::VirtAddr;
 use crate::syscall::handle_syscall;
 use crate::task::scheduler::{
-    current_task, current_task_satp, current_task_trap_context, current_task_trap_va, yield_current_task
+    current_task, current_task_satp, current_task_trap_context, current_task_trap_va,
+    yield_current_task,
 };
 use context::TrapContext;
 use core::arch::asm;
@@ -13,7 +15,6 @@ use riscv::register::scause::{
     Trap::{Exception, Interrupt},
 };
 use riscv::register::{sepc, sstatus, stval, stvec};
-use crate::arch::riscv::register::clear_sip_soft;
 
 pub mod context;
 

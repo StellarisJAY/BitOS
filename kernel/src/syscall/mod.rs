@@ -1,9 +1,9 @@
 pub mod fs;
-pub mod proc;
-pub mod task;
-pub mod sync;
-pub mod time;
 pub mod ipc;
+pub mod proc;
+pub mod sync;
+pub mod task;
+pub mod time;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
