@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 
 pub fn create_thread(entry: usize, arg: usize) -> usize {
     let pcb = current_proc();
-    let task = Arc::new(TaskControlBlock::new(Arc::clone(&pcb), entry, arg));
+    let task = Arc::new(TaskControlBlock::new(Arc::clone(&pcb), 10, entry, arg));
     let tid = task.tid();
     pcb.borrow_inner().tasks.push(Arc::clone(&task));
     push_task(task);

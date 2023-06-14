@@ -1,19 +1,19 @@
 use super::pid::{alloc_pid, Pid};
 use crate::config::*;
+use crate::fs::stdio::{Stdin, Stdout};
+use crate::fs::File;
 use crate::mem::address::*;
 use crate::mem::memory_set::MemorySet;
 use crate::sync::cell::SafeCell;
+use crate::sync::cond::Cond;
+use crate::sync::mutex::Mutex;
 use crate::task::scheduler::{add_process, push_task};
 use crate::task::tcb::TaskControlBlock;
 use crate::task::tid::TidAllocator;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 use alloc::vec;
+use alloc::vec::Vec;
 use core::cell::RefMut;
-use crate::sync::mutex::Mutex;
-use crate::sync::cond::Cond;
-use crate::fs::File;
-use crate::fs::stdio::{Stdin, Stdout};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ProcessState {
@@ -41,7 +41,7 @@ pub struct InnerPCB {
     pub tasks: Vec<Arc<TaskControlBlock>>,
     pub mutex_table: Vec<Option<Arc<dyn Mutex>>>, // 进程持有的mutex表，option表示一个mutex槽位是否空闲
     pub cond_table: Vec<Option<Arc<Cond>>>,
-    pub fd_table: Vec<Option<Arc<dyn File>>>,     // 进程持有的fd表
+    pub fd_table: Vec<Option<Arc<dyn File>>>, // 进程持有的fd表
 }
 
 impl ProcessControlBlock {
@@ -65,9 +65,9 @@ impl ProcessControlBlock {
             mutex_table: Vec::new(),
             cond_table: Vec::new(),
             fd_table: vec![
-                Some(Arc::new(Stdin{})),    // fd=0, stdin
-                Some(Arc::new(Stdout{})),   // fd=1, stdout
-                Some(Arc::new(Stdout{})),   // fd=2, stderr -> stdout
+                Some(Arc::new(Stdin {})),  // fd=0, stdin
+                Some(Arc::new(Stdout {})), // fd=1, stdout
+                Some(Arc::new(Stdout {})), // fd=2, stderr -> stdout
             ],
         };
         let proc = Arc::new(Self {
@@ -76,7 +76,7 @@ impl ProcessControlBlock {
             inner: SafeCell::new(inner),
         });
         // 创建main线程，然后将main线程交给调度器
-        let task = Arc::new(TaskControlBlock::new(Arc::clone(&proc), entry_point, 0));
+        let task = Arc::new(TaskControlBlock::new(Arc::clone(&proc), 10, entry_point, 0));
         push_task(Arc::clone(&task));
         proc.inner.borrow().tasks.push(task);
         let res = Arc::clone(&proc);
@@ -96,7 +96,7 @@ impl ProcessControlBlock {
         for item in p_inner.fd_table.iter() {
             if let Some(fd) = item {
                 fd_table.push(Some(Arc::clone(fd)));
-            }else {
+            } else {
                 fd_table.push(None);
             }
         }
@@ -184,13 +184,15 @@ impl ProcessControlBlock {
 
     pub fn alloc_fd(&self) -> usize {
         let mut inner = self.borrow_inner();
-        if let Some(fd) = inner.fd_table
-        .iter()
-        .enumerate()
-        .find(|(_, item)| item.is_none())
-        .map(|(idx, _)| idx) {
+        if let Some(fd) = inner
+            .fd_table
+            .iter()
+            .enumerate()
+            .find(|(_, item)| item.is_none())
+            .map(|(idx, _)| idx)
+        {
             return fd;
-        }else {
+        } else {
             inner.fd_table.push(None);
             return inner.fd_table.len() - 1;
         }

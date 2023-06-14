@@ -1,5 +1,7 @@
 use super::context::TaskContext;
-use crate::config::{task_trap_context_position, task_user_stack_position, PAGE_SIZE};
+use crate::config::{
+    task_trap_context_position, task_user_stack_position, PAGE_SIZE, PRIORITY_DIVIDER,
+};
 use crate::mem::address::*;
 use crate::mem::allocator::Frame;
 use crate::mem::kernel::{
@@ -38,10 +40,17 @@ pub struct TaskControlBlockInner {
     pub task_context: TaskContext,          // 线程上下文
     pub status: TaskStatus,
     pub exit_code: Option<isize>,
+    pub priority: usize, // 线程优先级: 1~100，优先级大调度越频繁
+    pub stride: usize,   // 步长调度
 }
 
 impl TaskControlBlock {
-    pub fn new(process: Arc<ProcessControlBlock>, entry_point: usize, arg: usize) -> Self {
+    pub fn new(
+        process: Arc<ProcessControlBlock>,
+        priority: usize,
+        entry_point: usize,
+        arg: usize,
+    ) -> Self {
         let tid = process.alloc_tid();
         let kstask = alloc_kstack().unwrap();
         let (kstack_bottom, kstack_top) = kernel_stack_position(kstask.0);
@@ -53,6 +62,7 @@ impl TaskControlBlock {
             ustack_bottom,
             ustack_top,
             kstack_top,
+            priority,
         );
         map_kernel_stack(kstack_bottom, kstack_top, None);
         let tcb = Self {
@@ -146,6 +156,8 @@ impl TaskControlBlock {
             trap_ctx_ppn: trap_ctx_ppn,
             status: p_inner.status,
             exit_code: None,
+            priority: p_inner.priority,
+            stride: p_inner.stride,
         };
         return Self {
             tid: p_inner.tid,
@@ -199,6 +211,12 @@ impl TaskControlBlock {
     pub fn wake_up(&self) {
         self.inner.borrow().status = TaskStatus::Ready;
     }
+
+    pub fn increase_stride(&self) {
+        let mut inner = self.inner.borrow();
+        let pass = PRIORITY_DIVIDER / inner.priority;
+        inner.stride += pass;
+    }
 }
 
 impl TaskControlBlockInner {
@@ -209,6 +227,7 @@ impl TaskControlBlockInner {
         ustack_bottom: usize,
         ustack_top: usize,
         kstack_sp: usize,
+        priority: usize,
     ) -> Self {
         let trap_context = task_trap_context_position(tid);
         Self::map_memory(
@@ -230,6 +249,8 @@ impl TaskControlBlockInner {
             task_context: TaskContext::switch_ret_context(kstack_sp),
             status: TaskStatus::Ready,
             exit_code: None,
+            priority: priority,
+            stride: 0,
         }
     }
 
