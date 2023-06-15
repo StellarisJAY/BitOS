@@ -5,8 +5,8 @@
 extern crate user_lib;
 extern crate alloc;
 
-use alloc::vec::Vec;
 use alloc::vec;
+use alloc::vec::Vec;
 use user_lib::{create_thread, wait_tid};
 
 #[no_mangle]
@@ -14,7 +14,7 @@ pub fn main() -> i32 {
     let n = 3;
     println!("This time-shard test will create {} threads.", n);
     println!("Observe each thread's progress to see RoundRobin with TimeShards");
-    
+
     let mut handles: Vec<isize> = Vec::new();
     let mut args_holder: Vec<Vec<usize>> = Vec::new();
     for i in 0usize..n {
@@ -22,7 +22,7 @@ pub fn main() -> i32 {
         let handle = create_thread(task as usize, &args_holder[i] as *const _ as usize);
         handles.push(handle);
     }
-    
+
     for handle in handles {
         wait_tid(handle);
     }

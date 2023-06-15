@@ -6,9 +6,9 @@
 mod syscall;
 #[macro_use]
 pub mod utils;
+pub mod file;
 pub mod sync;
 pub mod time;
-pub mod file;
 
 const USER_HEAP_SIZE: usize = 4096 * 1024;
 
@@ -30,28 +30,33 @@ pub extern "C" fn _start() {
     exit(main());
 }
 
-#[linkage="weak"]
+#[linkage = "weak"]
 #[no_mangle]
-fn main() ->i32 {
+fn main() -> i32 {
     panic!("no main found")
 }
 
 #[panic_handler]
-fn panic_handler(info: &core::panic::PanicInfo) -> !{
+fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     match info.location() {
         Some(loc) => {
             if let Some(msg) = info.message() {
-                println!("app panicked at {}:{}, message: {}",loc.file(), loc.line(), msg.as_str().unwrap());
-            }else {
-                println!("app panicked at {}:{}",loc.file(), loc.line());
+                println!(
+                    "app panicked at {}:{}, message: {}",
+                    loc.file(),
+                    loc.line(),
+                    msg.as_str().unwrap()
+                );
+            } else {
+                println!("app panicked at {}:{}", loc.file(), loc.line());
             }
-        },
+        }
         None => {
             println!("app panicked");
         }
     }
     exit(-1);
-    loop{}
+    loop {}
 }
 
 pub fn exit(code: i32) {

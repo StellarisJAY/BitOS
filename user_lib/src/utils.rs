@@ -1,12 +1,12 @@
-use core::fmt::*;
-use crate::syscall::write;
 use crate::syscall::read;
+use crate::syscall::write;
+use core::fmt::*;
 const FD_STDOUT: usize = 1;
 const FD_STDIN: usize = 0;
 
 struct Stdout {}
 
-static mut STDOUT: Stdout = Stdout{};
+static mut STDOUT: Stdout = Stdout {};
 
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> Result {
@@ -45,4 +45,3 @@ macro_rules! print {
         $crate::utils::print(format_args!(concat!($fmt) $(, $($arg)+)?));
     }
 }
-

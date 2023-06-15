@@ -1,2 +1,2 @@
-pub mod mutex;
 pub mod cond;
+pub mod mutex;

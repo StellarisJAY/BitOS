@@ -1,6 +1,6 @@
-use crate::{cond_create, cond_signal, cond_wait};
-use crate::mutex_lock;
 use super::mutex::Mutex;
+use crate::mutex_lock;
+use crate::{cond_create, cond_signal, cond_wait};
 
 pub struct Cond {
     cond_id: isize,
@@ -9,9 +9,12 @@ pub struct Cond {
 
 impl Cond {
     pub fn new(mutex: &Mutex) -> Self {
-        Self { cond_id: cond_create(), mutex_id: mutex.id() }
+        Self {
+            cond_id: cond_create(),
+            mutex_id: mutex.id(),
+        }
     }
-    
+
     pub fn wait(&self) {
         match cond_wait(self.cond_id, self.mutex_id) {
             -1 => panic!("condvar doesn't exist"),
@@ -22,7 +25,7 @@ impl Cond {
             }
         }
     }
-    
+
     pub fn signal(&self) {
         if cond_signal(self.cond_id) == -1 {
             panic!("condvar doesn't exist");

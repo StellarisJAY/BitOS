@@ -23,17 +23,17 @@ fn close(fd: usize) -> isize {
 
 impl File {
     pub fn open(path: &str, flags: OpenFlags) -> Self {
-        Self(open(path, flags) as usize)        
+        Self(open(path, flags) as usize)
     }
-    
+
     pub fn close(&self) -> isize {
         close(self.0)
     }
-    
+
     pub fn read(&self, buf: &mut [u8]) -> isize {
         read(self.0, buf)
     }
-    
+
     pub fn write(&self, buf: &[u8]) -> isize {
         write(self.0, buf)
     }

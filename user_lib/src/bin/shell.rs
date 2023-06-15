@@ -5,8 +5,8 @@
 extern crate user_lib;
 extern crate alloc;
 
-use user_lib::utils::{put_char, get_char};
 use alloc::string::String;
+use user_lib::utils::{get_char, put_char};
 
 const CR: u8 = b'\r';
 const LF: u8 = b'\n';
@@ -25,7 +25,7 @@ pub fn main() -> i32 {
             BS | DL => {
                 print!("{} {}", BS as char, BS as char);
                 cmd.pop();
-            },
+            }
             CR | LF => {
                 if cmd == "exit" {
                     println!("\nshell exited");
@@ -34,13 +34,16 @@ pub fn main() -> i32 {
                 put_char(b'\n');
                 if let Some(pid) = user_lib::spawn(cmd.as_str()) {
                     user_lib::wait_pid(pid);
-                }else {
+                } else {
                     println!("command not found");
                 }
                 cmd.clear();
                 print!(">>> ");
-            },
-            _ => {put_char(byte); cmd.push(byte as char);},
+            }
+            _ => {
+                put_char(byte);
+                cmd.push(byte as char);
+            }
         }
     }
     return 0;

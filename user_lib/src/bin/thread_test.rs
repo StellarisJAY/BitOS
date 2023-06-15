@@ -5,11 +5,11 @@
 extern crate user_lib;
 extern crate alloc;
 
-use alloc::vec::Vec;
 use alloc::vec;
+use alloc::vec::Vec;
+use user_lib::sync::cond::Cond;
 use user_lib::sync::mutex::Mutex;
 use user_lib::time::get_time_ms;
-use user_lib::sync::cond::Cond;
 
 struct Point {
     x: isize,
@@ -22,13 +22,16 @@ pub fn main() -> i32 {
     test_create_thread();
     test_mutex();
     test_cond();
-    println!("Thread Test Finish. Time used: {} ms", get_time_ms() - start);
+    println!(
+        "Thread Test Finish. Time used: {} ms",
+        get_time_ms() - start
+    );
     return 0;
 }
 
 fn test_create_thread() {
     println!("This is Create Thread test");
-    let point = Point{x: 10, y: 12};
+    let point = Point { x: 10, y: 12 };
     let nums: Vec<usize> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let t1 = user_lib::create_thread(thread1_func as usize, &point as *const _ as usize);
     let t2 = user_lib::create_thread(thread2_func as usize, &nums as *const _ as usize);
@@ -52,7 +55,11 @@ fn test_mutex() {
         println!("[main] thread-{} finished", tid);
     }
     unsafe {
-        println!("Test Finished, time used: {} ms, Sum = {}", get_time_ms() - start, SUM);
+        println!(
+            "Test Finished, time used: {} ms, Sum = {}",
+            get_time_ms() - start,
+            SUM
+        );
         assert!(SUM == 100_000, "Mutex Teest Failed");
     }
 }
@@ -92,12 +99,13 @@ static mut SUM: usize = 0;
 fn mutex_func(m: &Mutex) {
     for _ in 0..10000 {
         m.lock();
-        unsafe{SUM += 1;}
+        unsafe {
+            SUM += 1;
+        }
         m.unlock();
     }
     user_lib::exit(0);
 }
-
 
 use lazy_static::lazy_static;
 static mut STORAGE: usize = 0;
@@ -112,7 +120,7 @@ lazy_static! {
 
 fn producer_func() {
     MUTEX.lock();
-    unsafe{
+    unsafe {
         STORAGE = 1;
         println!("[producer] send: {}", STORAGE);
     }

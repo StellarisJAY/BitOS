@@ -8,7 +8,7 @@ struct TimerResult {
 
 impl TimerResult {
     fn empty() -> Self {
-        Self{msec: 0, usec: 0}
+        Self { msec: 0, usec: 0 }
     }
 }
 

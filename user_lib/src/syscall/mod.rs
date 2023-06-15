@@ -44,7 +44,7 @@ pub fn write(fd: usize, buf: &[u8]) -> isize {
     ecall(SYSCALL_WRITE, [fd, buf.as_ptr() as usize, buf.len()])
 }
 
-pub fn read(fd: usize ,buf: &[u8]) -> isize {
+pub fn read(fd: usize, buf: &[u8]) -> isize {
     ecall(SYSCALL_READ, [fd, buf.as_ptr() as usize, buf.len()])
 }
 
@@ -53,7 +53,7 @@ pub fn fork() -> isize {
 }
 
 pub fn yield_() -> isize {
-    ecall(SYSCALL_YIELD, [0usize;3])
+    ecall(SYSCALL_YIELD, [0usize; 3])
 }
 
 pub fn wait_pid(pid: usize) -> isize {
@@ -73,7 +73,7 @@ pub fn spawn(buf: &[u8]) -> isize {
 }
 
 pub fn mutex_create(blocking: bool) -> isize {
-    ecall(SYSCALL_MUTEX_CREATE, [if blocking {1} else {0}, 0, 0])
+    ecall(SYSCALL_MUTEX_CREATE, [if blocking { 1 } else { 0 }, 0, 0])
 }
 
 pub fn mutex_lock(id: isize) -> isize {
@@ -89,7 +89,7 @@ pub fn get_time(res_ptr: usize) -> isize {
 }
 
 pub fn cond_create() -> isize {
-    ecall(SYSCALL_COND_CREATE, [0,0,0])
+    ecall(SYSCALL_COND_CREATE, [0, 0, 0])
 }
 
 pub fn cond_signal(id: isize) -> isize {
