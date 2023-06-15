@@ -121,6 +121,10 @@ impl DiskInode {
             if current_seq < DIRECT_DATA_BLOCK_COUNT {
                 self.direct[current_seq as usize] = b;
             } else if current_seq < IDX1_BLOCK_COUNT {
+                // 一级索引块还没分配，从index_blocks里取出一个
+                if self.index1 == 0 {
+                    self.index1 = index_blocks.pop().unwrap();
+                }
                 // 一级索引内的偏移
                 let offset1 = (current_seq - DIRECT_DATA_BLOCK_COUNT) as usize;
                 get_block_cache_entry(self.index1, Arc::clone(&block_device))
