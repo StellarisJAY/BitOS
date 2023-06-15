@@ -25,7 +25,12 @@ impl MemorySet {
     // 从app的elf文件创建内存集合
     pub fn from_elf_data(data: &[u8]) -> (Self, usize, usize) {
         let mut memset = Self::new();
-        let elf = ElfBytes::<AnyEndian>::minimal_parse(data).unwrap();
+        let elf = ElfBytes::<AnyEndian>::minimal_parse(data);
+        if let Err(error) = elf {
+            error!("load elf error: {}", error);
+            panic!("load elf data failed");
+        }
+        let elf = elf.unwrap();
         // 映射elf segments
         let segments = elf.segments().unwrap();
         let mut max_vpn = 0;

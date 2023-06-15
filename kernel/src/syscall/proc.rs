@@ -4,6 +4,7 @@ use crate::task::scheduler::{
     add_process, current_task, current_task_translate_buffer, current_task_trap_context,
     exit_current_task, push_task, remove_process, schedule_idle,
 };
+use crate::fs::inode::{open_file, OpenFlags};
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -65,10 +66,10 @@ pub fn sys_spawn(ptr: usize, len: usize) -> isize {
     for part in buf {
         bytes.extend_from_slice(part);
     }
-    // 加载app数据
     let app_name = String::from_utf8(bytes).unwrap();
-    if let Some(data) = load_kernel_app(app_name.as_str()) {
-        let proc = ProcessControlBlock::from_elf_data(data);
+    // 文件系统加载app数据
+    if let Some(file) = open_file(app_name.as_str(), OpenFlags::RDONLY) {
+        let proc = ProcessControlBlock::from_elf_data(file.read_all().as_slice());
         let cur_task = current_task();
         let task = cur_task.inner.borrow();
         let parent = task.process.upgrade().unwrap();
@@ -78,7 +79,7 @@ pub fn sys_spawn(ptr: usize, len: usize) -> isize {
         proc.borrow_inner().parent = Some(Arc::clone(&parent));
         // 返回pid
         return proc.pid() as isize;
+    }else {
+        return -1;
     }
-    // app不存在，返回-1
-    -1
 }

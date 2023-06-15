@@ -1,10 +1,12 @@
 use crate::task::scheduler;
 use alloc::sync::Arc;
-
+use crate::fs::inode::{open_file, OpenFlags};
 pub mod loader;
 pub mod pcb;
 pub mod pid;
 
 pub fn init_processors() {
-    pcb::ProcessControlBlock::from_elf_data(loader::load_kernel_app("shell").unwrap());
+    let shell = open_file("shell", OpenFlags::RDONLY).unwrap();
+    let data = shell.read_all();
+    pcb::ProcessControlBlock::from_elf_data(data.as_slice());
 }

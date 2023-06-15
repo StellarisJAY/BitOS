@@ -32,7 +32,7 @@ global_asm!(include_str!("asm/entry.S"));
 global_asm!(include_str!("asm/kernelvec.S"));
 global_asm!(include_str!("asm/trampoline.S"));
 global_asm!(include_str!("asm/switch.S"));
-global_asm!(include_str!("asm/link_kernel_app.S"));
+global_asm!(include_str!("asm/link_fs.S"));
 
 // 引导内核启动，设置M模式下的寄存器，之后跳转到内核入口进入S模式
 #[no_mangle]
