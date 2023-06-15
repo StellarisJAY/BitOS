@@ -17,8 +17,7 @@ struct StrideManagerInner {
 }
 
 // 不能直接为Arc实现Ord和Eq
-struct TCBHolder (Arc<TaskControlBlock>);
-
+struct TCBHolder(Arc<TaskControlBlock>);
 
 impl StrideManager {
     pub fn new() -> Self {
@@ -33,7 +32,6 @@ impl StrideManager {
 }
 
 impl TaskManager for StrideManager {
-
     fn push_task(&self, task: Arc<TaskControlBlock>) {
         let mut inner = self.inner.borrow();
         inner.pqueue.push(TCBHolder(task));
@@ -48,7 +46,7 @@ impl TaskManager for StrideManager {
                 // 被调度一次，增加stride
                 holder.0.increase_stride();
                 return Some(holder.0);
-            }else {
+            } else {
                 not_ready.push(holder);
             }
         }
@@ -60,13 +58,15 @@ impl TaskManager for StrideManager {
     }
 
     fn add_process(&self, proc: Arc<ProcessControlBlock>) {
-        self.inner.borrow().processes.insert(proc.pid(), Arc::clone(&proc));
+        self.inner
+            .borrow()
+            .processes
+            .insert(proc.pid(), Arc::clone(&proc));
     }
     fn remove_process(&self, pid: usize) {
         self.inner.borrow().processes.remove(&pid);
     }
 }
-
 
 impl Ord for TCBHolder {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {

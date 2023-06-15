@@ -1,13 +1,13 @@
 use crate::bitmap::{Bitmap, ALLOC_PER_BMAP_BLOCK};
-use crate::block_cache::{get_block_cache_entry, fsync};
+use crate::block_cache::{fsync, get_block_cache_entry};
 use crate::block_device::BlockDevice;
 use crate::inode::{DiskInode, InodeType, INODES_PER_BLOCK, INODE_SIZE};
 use crate::layout::BLOCK_SIZE;
 use crate::super_block::SuperBlock;
-use alloc::sync::Arc;
 use crate::vfs::Inode;
-use spin::Mutex;
+use alloc::sync::Arc;
 use core::option::Option;
+use spin::Mutex;
 
 pub struct SimpleFileSystem {
     pub block_dev: Arc<dyn BlockDevice>,
@@ -26,7 +26,7 @@ impl SimpleFileSystem {
         // 剩下的block里面，分成多个{一个bitmap块+可分配的data块}组合，向上取整避免data_blocks数量不足一个bitmap块可分配的数量
         let data_bmap_blocks = (remaining + ALLOC_PER_BMAP_BLOCK + 1) / (ALLOC_PER_BMAP_BLOCK + 1);
         let data_blocks = remaining - data_bmap_blocks;
-        
+
         // 清空缓存数据
         for i in 0..total_blocks {
             get_block_cache_entry(i, Arc::clone(&block_dev))

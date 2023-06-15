@@ -1,7 +1,7 @@
 use super::{File, UserBuffer};
 use crate::driver::blk::BLOCK_DEVICE;
-use alloc::sync::Arc;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::bitflags;
 use lazy_static::lazy_static;
@@ -59,14 +59,14 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
         } else {
             return ROOT_INODE
                 .create(name, false, readable, writable)
-            .map(|inode| Arc::new(inode))
+                .map(|inode| Arc::new(inode));
         }
     } else {
         if let Some(inode) = ROOT_INODE.find(name) {
             let inner = inode.inner.lock();
             let inode = Arc::clone(&inner.inode);
             return Some(Arc::new(OSInode::new(readable, writable, inode)));
-        }else {
+        } else {
             None
         }
     }
@@ -77,7 +77,12 @@ pub fn list_apps() {
     let apps = ROOT_INODE.ls().unwrap();
     kernel!("listing kernel apps: ");
     apps.iter().enumerate().for_each(|(i, name)| {
-        kernel!("{}. {}, size: {}", i, name, ROOT_INODE.find(name).unwrap().size());
+        kernel!(
+            "{}. {}, size: {}",
+            i,
+            name,
+            ROOT_INODE.find(name).unwrap().size()
+        );
     });
 }
 
@@ -96,10 +101,10 @@ impl OSInode {
 
     pub fn find(&self, name: &str) -> Option<OSInode> {
         let inner = self.inner.lock();
-        inner.inode.find(name)
-        .map(|inode| {
-            OSInode::new(true, true, Arc::new(inode))
-        })
+        inner
+            .inode
+            .find(name)
+            .map(|inode| OSInode::new(true, true, Arc::new(inode)))
     }
 
     pub fn size(&self) -> u32 {
@@ -107,8 +112,11 @@ impl OSInode {
     }
 
     pub fn create(&self, name: &str, dir: bool, readable: bool, writable: bool) -> Option<OSInode> {
-        self.inner.lock().inode.create(name, dir)
-        .map(|inode| {OSInode::new(readable, writable, inode)})
+        self.inner
+            .lock()
+            .inode
+            .create(name, dir)
+            .map(|inode| OSInode::new(readable, writable, inode))
     }
 }
 
@@ -141,7 +149,9 @@ impl OSInode {
         let mut offset = 0u32;
         let mut buf: [u8; 512] = [0; 512];
         while remain > 0 {
-            let len = inner.inode.read(offset, &mut buf[0..512.min(remain as usize)]);
+            let len = inner
+                .inode
+                .read(offset, &mut buf[0..512.min(remain as usize)]);
             remain -= len as u32;
             offset += len as u32;
             data.extend_from_slice(&buf[0..len]);

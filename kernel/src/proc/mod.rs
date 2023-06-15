@@ -1,6 +1,6 @@
+use crate::fs::inode::{open_file, OpenFlags};
 use crate::task::scheduler;
 use alloc::sync::Arc;
-use crate::fs::inode::{open_file, OpenFlags};
 pub mod loader;
 pub mod pcb;
 pub mod pid;

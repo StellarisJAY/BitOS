@@ -83,9 +83,18 @@ impl Inode {
         }
     }
 
-    pub fn from_inode_seq(seq: u32, fs: Arc<Mutex<SimpleFileSystem>>, block_dev: Arc<dyn BlockDevice>) -> Self {
+    pub fn from_inode_seq(
+        seq: u32,
+        fs: Arc<Mutex<SimpleFileSystem>>,
+        block_dev: Arc<dyn BlockDevice>,
+    ) -> Self {
         let (block_id, _, offset) = fs.lock().get_inode_position(seq);
-        return Self { block_id: block_id, offset: offset, fs: fs, block_dev: block_dev };
+        return Self {
+            block_id: block_id,
+            offset: offset,
+            fs: fs,
+            block_dev: block_dev,
+        };
     }
 
     fn read_disk_inode<F: FnMut(&DiskInode) -> V, V: Sized>(&self, mut f: F) -> V {
@@ -103,34 +112,46 @@ impl Inode {
     }
 
     pub fn find(&self, name: &str) -> Option<Inode> {
-        return self.read_disk_inode(|disk_inode| {
-            Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev))
-        }).map(|inode_seq| {
-            let (block_id, _, offset) = self.fs.lock().get_inode_position(inode_seq);
-            return Inode::new(block_id, offset, Arc::clone(&self.fs), Arc::clone(&self.block_dev));
-        });
+        return self
+            .read_disk_inode(|disk_inode| {
+                Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev))
+            })
+            .map(|inode_seq| {
+                let (block_id, _, offset) = self.fs.lock().get_inode_position(inode_seq);
+                return Inode::new(
+                    block_id,
+                    offset,
+                    Arc::clone(&self.fs),
+                    Arc::clone(&self.block_dev),
+                );
+            });
     }
 
     pub fn ls(&self) -> Option<Vec<String>> {
-        return self.read_disk_inode(|disk_inode| {Self::list(disk_inode, Arc::clone(&self.block_dev))});
+        return self
+            .read_disk_inode(|disk_inode| Self::list(disk_inode, Arc::clone(&self.block_dev)));
     }
 
-    fn find_inode(disk_inode: &DiskInode, name: &str, block_dev: Arc<dyn BlockDevice>) -> Option<u32> {
+    fn find_inode(
+        disk_inode: &DiskInode,
+        name: &str,
+        block_dev: Arc<dyn BlockDevice>,
+    ) -> Option<u32> {
         if let Some(files) = Self::list(disk_inode, Arc::clone(&block_dev)) {
             return files
-                    .iter()
-                    .enumerate()
-                    .find(|(_, filename)| String::from(name) == **filename)
-                    .map(|(idx, _)| {
-                        let mut dir_entry = DirEntry::empty();
-                        disk_inode.read(
-                            idx as u32 * DIR_ENTRY_SIZE,
-                            DIR_ENTRY_SIZE,
-                            dir_entry.as_mut_bytes(),
-                            Arc::clone(&block_dev),
-                        );
-                        return dir_entry.inode;
-                    });
+                .iter()
+                .enumerate()
+                .find(|(_, filename)| String::from(name) == **filename)
+                .map(|(idx, _)| {
+                    let mut dir_entry = DirEntry::empty();
+                    disk_inode.read(
+                        idx as u32 * DIR_ENTRY_SIZE,
+                        DIR_ENTRY_SIZE,
+                        dir_entry.as_mut_bytes(),
+                        Arc::clone(&block_dev),
+                    );
+                    return dir_entry.inode;
+                });
         } else {
             return None;
         }
@@ -150,10 +171,10 @@ impl Inode {
             let mut dir_entry = DirEntry::empty();
             disk_inode.read(
                 i * DIR_ENTRY_SIZE,
-                    DIR_ENTRY_SIZE,
-                    dir_entry.as_mut_bytes(),
-                    Arc::clone(&block_dev),
-                );
+                DIR_ENTRY_SIZE,
+                dir_entry.as_mut_bytes(),
+                Arc::clone(&block_dev),
+            );
             res.push(String::from(dir_entry.name()));
         }
         return Some(res);
@@ -199,20 +220,20 @@ impl Inode {
         inode.modify_disk_inode(|disk_inode| {
             if mkdir {
                 disk_inode.set_type(InodeType::Directory);
-            }else {
+            } else {
                 disk_inode.set_type(InodeType::Directory);
             }
         });
         return Some(Arc::new(inode));
     }
 
-    pub fn read(&self, offset: u32, buf: &mut [u8]) -> usize{
+    pub fn read(&self, offset: u32, buf: &mut [u8]) -> usize {
         return self.read_disk_inode(|disk_inode| {
             return disk_inode.read(offset, buf.len() as u32, buf, Arc::clone(&self.block_dev));
         });
     }
 
-    pub fn write(&self, offset: u32, buf: &[u8]) -> usize{
+    pub fn write(&self, offset: u32, buf: &[u8]) -> usize {
         return self.modify_disk_inode(|disk_inode| {
             self.grow_disk_inode(disk_inode, disk_inode.size() + buf.len() as u32);
             return disk_inode.write(offset, buf.len() as u32, buf, Arc::clone(&self.block_dev));

@@ -11,9 +11,9 @@ use crate::sync::cell::SafeCell;
 use crate::trap::context::TrapContext;
 use alloc::collections::BTreeMap;
 use alloc::collections::VecDeque;
+use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use alloc::string::String;
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
 

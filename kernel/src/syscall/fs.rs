@@ -1,6 +1,6 @@
+use crate::fs::inode::{open_file, OpenFlags};
 use crate::fs::UserBuffer;
 use crate::task::scheduler::{current_proc, current_task_translate_string};
-use crate::fs::inode::{open_file, OpenFlags};
 use alloc::sync::Arc;
 
 pub fn sys_write(fd: usize, buf_ptr: usize, len: usize) -> isize {
@@ -34,7 +34,7 @@ pub fn sys_open(path: usize, flags: u32) -> isize {
         let fd = proc.alloc_fd();
         proc.borrow_inner().fd_table[fd] = Some(file);
         return fd as isize;
-    }else {
+    } else {
         return -1;
     }
 }

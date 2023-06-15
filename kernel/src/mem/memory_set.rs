@@ -187,7 +187,7 @@ impl MemorySet {
                 if (*b) == b'\0' {
                     end = true;
                     break;
-                }else {
+                } else {
                     data.push(*b);
                 }
             }

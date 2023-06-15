@@ -25,7 +25,7 @@ pub fn wait_tid(tid: usize) -> isize {
                     Some(code) => return code,
                 }
             } else {
-                code =  -2;
+                code = -2;
             }
             break;
         }

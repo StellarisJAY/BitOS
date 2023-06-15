@@ -70,7 +70,11 @@ impl BlockCache {
             self.cache_map.remove(&id);
         }
         // block_data必须强制在堆上分配，避免栈溢出
-        let entry = Arc::new(Mutex::new(CacheEntry::new(block_id, [0u8; BLOCK_SIZE as usize], Arc::clone(&block_device))));
+        let entry = Arc::new(Mutex::new(CacheEntry::new(
+            block_id,
+            [0u8; BLOCK_SIZE as usize],
+            Arc::clone(&block_device),
+        )));
         let mut inner = entry.lock();
         let data = &mut inner.block_data;
         block_device.read(block_id, data);

@@ -163,7 +163,13 @@ impl DiskInode {
         }
     }
     // 从inode索引的数据块里面读取从offset开始的size大小数据
-    pub fn read(&self, offset: u32, size: u32, buf: &mut [u8], block_device: Arc<dyn BlockDevice>) -> usize {
+    pub fn read(
+        &self,
+        offset: u32,
+        size: u32,
+        buf: &mut [u8],
+        block_device: Arc<dyn BlockDevice>,
+    ) -> usize {
         if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
             return 0;
         }
@@ -198,7 +204,13 @@ impl DiskInode {
     }
 
     // 向inode索引的数据块的offset位置写入大小为size的数据
-    pub fn write(&self, offset: u32, size: u32, buf: &[u8], block_device: Arc<dyn BlockDevice>) -> usize{
+    pub fn write(
+        &self,
+        offset: u32,
+        size: u32,
+        buf: &[u8],
+        block_device: Arc<dyn BlockDevice>,
+    ) -> usize {
         if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
             return 0;
         }

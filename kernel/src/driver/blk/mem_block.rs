@@ -20,9 +20,9 @@ impl MemoryBlockDevice {
             end: _fs_end as usize,
         }
     }
-    
+
     fn block_id_to_mem_addr(&self, block_id: u32) -> usize {
-        self.start + (BLOCK_SIZE * block_id) as usize        
+        self.start + (BLOCK_SIZE * block_id) as usize
     }
 }
 
@@ -36,7 +36,7 @@ impl BlockDevice for MemoryBlockDevice {
             data.copy_from_slice(block);
         }
     }
-    
+
     fn write(&self, block_id: u32, data: &[u8]) {
         let offset = self.block_id_to_mem_addr(block_id);
         assert!(offset < self.end);
@@ -47,4 +47,3 @@ impl BlockDevice for MemoryBlockDevice {
         }
     }
 }
-

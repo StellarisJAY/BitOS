@@ -14,9 +14,9 @@ use crate::sync::cell::SafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::user_trap_handler;
 use alloc::collections::BTreeMap;
+use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
-use alloc::string::String;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TaskStatus {
