@@ -1,26 +1,40 @@
-use std::fs::{File, OpenOptions};
+use alloc::sync::Arc;
 use simplefs::block_device::BlockDevice;
 use simplefs::layout::BLOCK_SIZE;
 use simplefs::simple_fs::SimpleFileSystem;
 use simplefs::vfs::Inode;
 use spin::Mutex;
-use alloc::sync::Arc;
-use std::io::{Seek, SeekFrom, Read, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Seek, SeekFrom, Write};
 
-extern crate simplefs;
 extern crate alloc;
-struct FileBlockDev (Mutex<File>);
+extern crate simplefs;
+struct FileBlockDev(Mutex<File>);
 
 fn main() {
     create_fs();
+    open_fs();
 }
 
 fn create_fs() {
-    let paths: Vec<&str> = vec!["../user_lib/target/riscv64gc-unknown-none-elf/release/hello",
-    "../user_lib/target/riscv64gc-unknown-none-elf/release/shell",
-    "../user_lib/target/riscv64gc-unknown-none-elf/release/fork_test",
-    "../user_lib/target/riscv64gc-unknown-none-elf/release/thread_test"];
-    let app_names: Vec<&str> = vec!["hello_world", "shell", "fork_test", "thread_test"];
+    let paths: Vec<&str> = vec![
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/hello",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/shell",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/fork_test",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/thread_test",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/file_test",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/timeshard_test",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/help",
+    ];
+    let app_names: Vec<&str> = vec![
+        "hello_world",
+        "shell",
+        "fork_test",
+        "thread_test",
+        "file_test",
+        "timeshard_test",
+        "help",
+    ];
 
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));
     let mut fs = SimpleFileSystem::new(Arc::clone(&block_dev), 4096, 1);
@@ -32,7 +46,10 @@ fn create_fs() {
     println!("root inode got, creating files");
     for (i, name) in app_names.iter().enumerate() {
         let inode = root_inode.create(name, false).unwrap();
-        let mut elf = OpenOptions::new().read(true).open(paths.get(i).unwrap()).expect("open elf file error");
+        let mut elf = OpenOptions::new()
+            .read(true)
+            .open(paths.get(i).unwrap())
+            .expect("open elf file error");
         let mut data: Vec<u8> = Vec::new();
         elf.read_to_end(&mut data).expect("read elf file error");
         inode.write(0, data.as_slice());
@@ -40,9 +57,27 @@ fn create_fs() {
     fs.lock().fsync();
 }
 
+fn open_fs() {
+    let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", false));
+    let fs = SimpleFileSystem::open(Arc::clone(&block_dev));
+    let fs = Arc::new(Mutex::new(fs));
+    println!("fs opened, listing files");
+    let root_inode = fs.lock().root_inode(Arc::clone(&fs));
+    root_inode
+        .ls()
+        .unwrap()
+        .iter()
+        .for_each(|s| println!("name: {}, size: {}", s, root_inode.find(s).unwrap().size()));
+}
+
 impl FileBlockDev {
     fn new(path: &str, create: bool) -> Self {
-        let file = OpenOptions::new().read(true).write(true).create_new(create).open(path).unwrap();
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(create)
+            .open(path)
+            .unwrap();
         file.set_len(4096 * 4096).unwrap();
         return Self(Mutex::new(file));
     }
@@ -51,12 +86,14 @@ impl FileBlockDev {
 impl BlockDevice for FileBlockDev {
     fn read(&self, block_id: u32, data: &mut [u8]) {
         let mut file = self.0.lock();
-        file.seek(SeekFrom::Start((block_id * BLOCK_SIZE) as u64)).expect("file seek error");
+        file.seek(SeekFrom::Start((block_id * BLOCK_SIZE) as u64))
+            .expect("file seek error");
         file.read(data).expect("file read error");
     }
     fn write(&self, block_id: u32, data: &[u8]) {
         let mut file = self.0.lock();
-        file.seek(SeekFrom::Start((block_id * BLOCK_SIZE) as u64)).expect("file seek error");
+        file.seek(SeekFrom::Start((block_id * BLOCK_SIZE) as u64))
+            .expect("file seek error");
         file.write(data).expect("file write error");
     }
 }
