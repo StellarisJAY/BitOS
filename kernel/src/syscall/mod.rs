@@ -5,6 +5,9 @@ pub mod sync;
 pub mod task;
 pub mod time;
 
+const SYSCALL_OPEN: usize = 56;
+const SYSCALL_CLOSE: usize = 57;
+
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
@@ -49,6 +52,9 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
         SYSCALL_COND_CREATE => sync::cond_create(),
         SYSCALL_COND_SIGNAL => sync::cond_signal(args[0] as isize),
         SYSCALL_COND_WAIT => sync::cond_wait(args[0] as isize, args[1] as isize),
+
+        SYSCALL_OPEN => fs::sys_open(args[0], args[1] as u32),
+        SYSCALL_CLOSE => fs::sys_close(args[0]),
         _ => {
             debug!("unsupported syscall: {}", id);
             panic!("unsupported syscall");

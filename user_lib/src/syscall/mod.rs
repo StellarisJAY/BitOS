@@ -1,5 +1,8 @@
 use core::arch::asm;
 
+const SYSCALL_OPEN: usize = 56;
+const SYSCALL_CLOSE: usize = 57;
+
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
@@ -95,4 +98,12 @@ pub fn cond_signal(id: isize) -> isize {
 
 pub fn cond_wait(id: isize, mutex: isize) -> isize {
     ecall(SYSCALL_COND_WAIT, [id as usize, mutex as usize, 0])
+}
+
+pub fn open(path: &str, flags: u32) -> isize {
+    ecall(SYSCALL_OPEN, [path.as_ptr() as usize, flags as usize, 0])
+}
+
+pub fn close(fd: usize) -> isize {
+    ecall(SYSCALL_CLOSE, [fd, 0, 0])
 }
