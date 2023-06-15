@@ -136,6 +136,10 @@ impl Inode {
         }
     }
 
+    pub fn size(&self) -> u32 {
+        self.read_disk_inode(|disk_inode| disk_inode.size())
+    }
+
     fn list(disk_inode: &DiskInode, block_dev: Arc<dyn BlockDevice>) -> Option<Vec<String>> {
         let mut res: Vec<String> = Vec::new();
         if !disk_inode.is_dir() {
