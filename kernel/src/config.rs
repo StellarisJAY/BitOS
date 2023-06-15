@@ -42,6 +42,13 @@ pub enum ManagerType {
 
 pub const TASK_MANAGER: ManagerType = ManagerType::FIFO;
 
+pub enum BlockDeviceType {
+    VIRTIO,
+    MEMORY,
+}
+
+pub const BLOCK_DEVICE_TYPE: BlockDeviceType = BlockDeviceType::MEMORY;
+
 // 获取线程在用户空间的trap_context地址
 pub fn task_trap_context_position(tid: usize) -> usize {
     TRAMPOLINE - (tid + 1) * PAGE_SIZE
