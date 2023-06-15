@@ -206,16 +206,16 @@ impl Inode {
         return Some(Arc::new(inode));
     }
 
-    pub fn read(&self, offset: u32, buf: &mut [u8]) {
-        self.read_disk_inode(|disk_inode| {
-            disk_inode.read(offset, buf.len() as u32, buf, Arc::clone(&self.block_dev));
+    pub fn read(&self, offset: u32, buf: &mut [u8]) -> usize{
+        return self.read_disk_inode(|disk_inode| {
+            return disk_inode.read(offset, buf.len() as u32, buf, Arc::clone(&self.block_dev));
         });
     }
 
-    pub fn write(&self, offset: u32, buf: &[u8]) {
-        self.modify_disk_inode(|disk_inode| {
+    pub fn write(&self, offset: u32, buf: &[u8]) -> usize{
+        return self.modify_disk_inode(|disk_inode| {
             self.grow_disk_inode(disk_inode, disk_inode.size() + buf.len() as u32);
-            disk_inode.write(offset, buf.len() as u32, buf, Arc::clone(&self.block_dev));
+            return disk_inode.write(offset, buf.len() as u32, buf, Arc::clone(&self.block_dev));
         });
     }
 

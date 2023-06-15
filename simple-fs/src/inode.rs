@@ -163,9 +163,9 @@ impl DiskInode {
         }
     }
     // 从inode索引的数据块里面读取从offset开始的size大小数据
-    pub fn read(&self, offset: u32, size: u32, buf: &mut [u8], block_device: Arc<dyn BlockDevice>) {
+    pub fn read(&self, offset: u32, size: u32, buf: &mut [u8], block_device: Arc<dyn BlockDevice>) -> usize {
         if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
-            panic!("read out of range");
+            return 0;
         }
         let mut cur_block_seq = offset / BLOCK_SIZE;
         let mut cur_block_off = offset % BLOCK_SIZE;
@@ -173,6 +173,7 @@ impl DiskInode {
         let last_block_seq = (offset + size) / BLOCK_SIZE;
         let last_block_off = (offset + size) % BLOCK_SIZE;
         let mut buf_off = 0;
+        let mut length = 0;
         while cur_block_seq <= last_block_seq {
             // 最后一个块的块内的结束位置
             if cur_block_seq == last_block_seq {
@@ -188,16 +189,18 @@ impl DiskInode {
                     let range = &block[cur_block_off as usize..cur_block_end as usize];
                     buf[buf_off..buf_off + range.len()].copy_from_slice(range);
                     buf_off += range.len();
+                    length += range.len();
                 });
             cur_block_seq += 1;
             cur_block_off = 0;
         }
+        return length;
     }
 
     // 向inode索引的数据块的offset位置写入大小为size的数据
-    pub fn write(&self, offset: u32, size: u32, buf: &[u8], block_device: Arc<dyn BlockDevice>) {
+    pub fn write(&self, offset: u32, size: u32, buf: &[u8], block_device: Arc<dyn BlockDevice>) -> usize{
         if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
-            panic!("read out of range");
+            return 0;
         }
         let mut cur_block_seq = offset / BLOCK_SIZE;
         let mut cur_block_off = offset % BLOCK_SIZE;
@@ -205,6 +208,7 @@ impl DiskInode {
         let last_block_seq = (offset + size) / BLOCK_SIZE;
         let last_block_off = (offset + size) % BLOCK_SIZE;
         let mut buf_off: usize = 0;
+        let mut write_len = 0;
         while cur_block_seq <= last_block_seq {
             // 最后一个块的块内的结束位置
             if cur_block_seq == last_block_seq {
@@ -221,10 +225,12 @@ impl DiskInode {
                     block[cur_block_off as usize..cur_block_end as usize]
                         .copy_from_slice(&buf[buf_off..buf_off + length]);
                     buf_off += length;
+                    write_len += length;
                 });
             cur_block_seq += 1;
             cur_block_off = 0;
         }
+        return write_len;
     }
 }
 
