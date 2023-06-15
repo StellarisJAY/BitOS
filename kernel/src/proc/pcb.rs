@@ -161,6 +161,11 @@ impl ProcessControlBlock {
         return res;
     }
 
+    pub fn translate_string(&self, addr: usize) -> alloc::string::String {
+        let inner = self.inner.borrow();
+        return inner.memory_set.translate_string(addr);
+    }
+
     pub fn translate_va(&self, va: usize) -> usize {
         let inner = self.inner.borrow();
         inner.memory_set.va_to_pa(VirtAddr(va)).unwrap().0

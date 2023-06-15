@@ -13,6 +13,7 @@ use alloc::collections::BTreeMap;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::string::String;
 use lazy_static::lazy_static;
 use spin::mutex::SpinMutex;
 
@@ -132,6 +133,12 @@ pub fn current_task_translate_buffer<'a>(addr: usize, len: usize) -> Vec<&'a mut
     let p = processor.borrow();
     let buf = p.current_task().unwrap().translate_buffer(addr, len);
     return buf;
+}
+
+pub fn current_task_translate_string(addr: usize) -> String {
+    let processor = PROCESSORS.get(cpuid()).unwrap();
+    let p = processor.borrow();
+    p.current_task().unwrap().translate_string(addr)
 }
 
 pub fn current_task_trap_context<'a>() -> &'a mut TrapContext {

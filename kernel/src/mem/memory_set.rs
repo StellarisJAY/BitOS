@@ -3,6 +3,7 @@ use super::allocator::{alloc, dealloc, Frame};
 use super::page_table::{PageTable, PageTableEntry};
 use crate::config::{PAGE_SIZE, TRAMPOLINE};
 use alloc::collections::BTreeMap;
+use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::bitflags;
@@ -171,5 +172,27 @@ impl MemorySet {
             vpn += 1;
         }
         return buffers;
+    }
+
+    // 转换一个用户空间的以 \0 结尾的字符串
+    pub fn translate_string(&self, addr: usize) -> String {
+        let va = VirtAddr(addr);
+        let mut offset = va.offset();
+        let mut vpn = va.vpn();
+        let mut data: Vec<u8> = Vec::new();
+        let mut end = false;
+        while !end {
+            let page = self.vpn_to_ppn(vpn).unwrap().as_bytes();
+            for b in (&page[offset..]).iter() {
+                if (*b) == b'\0' {
+                    end = true;
+                    break;
+                }else {
+                    data.push(*b);
+                }
+            }
+            offset = 0;
+        }
+        return String::from_utf8(data).unwrap();
     }
 }

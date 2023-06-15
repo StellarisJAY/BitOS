@@ -16,6 +16,7 @@ use crate::trap::user_trap_handler;
 use alloc::collections::BTreeMap;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
+use alloc::string::String;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TaskStatus {
@@ -172,6 +173,13 @@ impl TaskControlBlock {
         let proc = inner.process.upgrade().unwrap();
         proc.translate_buffer(addr, len)
     }
+
+    pub fn translate_string(&self, addr: usize) -> String {
+        let inner = self.inner.borrow();
+        let proc = inner.process.upgrade().unwrap();
+        proc.translate_string(addr)
+    }
+
     // 虚拟地址转换物理地址
     pub fn transalate_virtaddr(&self, va: usize) -> usize {
         let inner = self.inner.borrow();
