@@ -8,6 +8,7 @@ mod syscall;
 pub mod utils;
 pub mod sync;
 pub mod time;
+pub mod file;
 
 const USER_HEAP_SIZE: usize = 4096 * 1024;
 
