@@ -41,8 +41,13 @@ pub fn stat(path: &str) -> Option<FileStat> {
 }
 
 impl File {
-    pub fn open(path: &str, flags: OpenFlags) -> Self {
-        Self(open(path, flags) as usize)
+    pub fn open(path: &str, flags: OpenFlags) -> Option<Self> {
+        let fd = open(path, flags);
+        if fd == -1 {
+            return None;
+        } else {
+            return Some(Self(fd as usize));
+        }
     }
 
     pub fn close(&self) -> isize {

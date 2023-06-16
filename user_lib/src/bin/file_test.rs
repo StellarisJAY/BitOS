@@ -21,14 +21,14 @@ pub fn main() -> i32 {
 }
 
 fn create_file() {
-    let file = File::open("test_file\0", OpenFlags::CREATE);
+    let file = File::open("test_file\0", OpenFlags::CREATE).unwrap();
     let write_len = file.write("hello world".as_bytes());
     println!("file write finished, len: {}", write_len);
     file.close();
 }
 
 fn read_file() {
-    let file = File::open("test_file\0", OpenFlags::RDONLY);
+    let file = File::open("test_file\0", OpenFlags::RDONLY).unwrap();
     let mut data: Vec<u8> = Vec::new();
     let mut buf: [u8; 11] = [0; 11];
     let read_len = file.read(&mut buf);
@@ -39,7 +39,7 @@ fn read_file() {
 }
 
 fn read_fstat() {
-    let file = File::open("test_file\0", OpenFlags::RDONLY);
+    let file = File::open("test_file\0", OpenFlags::RDONLY).unwrap();
     match file.fstat() {
         Some(stat) => println!("{:?}", stat),
         None => panic!("read fstat error"),
