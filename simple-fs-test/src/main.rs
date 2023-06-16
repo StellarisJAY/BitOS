@@ -25,6 +25,7 @@ fn create_fs() {
         "../user_lib/target/riscv64gc-unknown-none-elf/release/file_test",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/timeshard_test",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/help",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/echo",
     ];
     let app_names: Vec<&str> = vec![
         "hello_world",
@@ -34,6 +35,7 @@ fn create_fs() {
         "file_test",
         "timeshard_test",
         "help",
+        "echo",
     ];
 
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));
