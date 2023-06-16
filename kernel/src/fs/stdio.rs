@@ -25,6 +25,10 @@ impl File for Stdin {
     fn write<'a>(&self, buf: &mut UserBuffer) -> usize {
         panic!("can not write stdin")
     }
+
+    fn fstat(&self) -> Option<super::FileStat> {
+        None
+    }
 }
 
 impl File for Stdout {
@@ -39,5 +43,9 @@ impl File for Stdout {
             sum += bytes.len();
         });
         return sum;
+    }
+
+    fn fstat(&self) -> Option<super::FileStat> {
+        None
     }
 }

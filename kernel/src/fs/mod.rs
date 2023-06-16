@@ -8,6 +8,23 @@ pub mod stdio;
 pub trait File: Send + Sync {
     fn read<'a>(&self, buf: &mut UserBuffer) -> usize;
     fn write<'a>(&self, buf: &mut UserBuffer) -> usize;
+    fn fstat(&self) -> Option<FileStat>;
+}
+
+// 文件状态struct
+#[repr(C)]
+pub struct FileStat {
+    pub inode: u32,          // inode编号
+    pub size: u32,           // 大小
+    pub blocks: u32,         // 占用的IO块总数
+    pub io_block: u32,       // IO块大小
+    pub index_blocks: u32,   // 索引块数量
+}
+
+impl FileStat {
+    pub fn empty() -> Self {
+        Self { inode: 0, size: 0, blocks: 0, io_block: 0, index_blocks: 0 }
+    }
 }
 
 pub struct UserBuffer<'a> {

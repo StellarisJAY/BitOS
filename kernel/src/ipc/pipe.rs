@@ -93,4 +93,7 @@ impl File for Pipe {
         panic!("not implemented");
         0
     }
+    fn fstat(&self) -> Option<crate::fs::FileStat> {
+        None
+    }
 }
