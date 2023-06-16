@@ -1,4 +1,4 @@
-use crate::fs::inode::{open_file, OpenFlags, find, OSInode};
+use crate::fs::inode::{find, open_file, OSInode, OpenFlags};
 use crate::fs::FileStat;
 use crate::fs::UserBuffer;
 use crate::task::scheduler::{current_proc, current_task_translate_string};

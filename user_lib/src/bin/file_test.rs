@@ -7,8 +7,8 @@ extern crate alloc;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use user_lib::file::{File, OpenFlags};
 use user_lib::file;
+use user_lib::file::{File, OpenFlags};
 
 #[no_mangle]
 pub fn main() -> i32 {

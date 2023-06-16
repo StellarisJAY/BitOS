@@ -1,10 +1,10 @@
-use core::borrow::Borrow;
-use super::{File, UserBuffer, FileStat};
+use super::{File, FileStat, UserBuffer};
 use crate::driver::blk::BLOCK_DEVICE;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::bitflags;
+use core::borrow::Borrow;
 use lazy_static::lazy_static;
 use simplefs::simple_fs::SimpleFileSystem;
 use simplefs::vfs::Inode;
@@ -48,8 +48,6 @@ pub struct OSInodeInner {
     offset: u32,       // 读写位置offset
     inode: Arc<Inode>, // 文件系统inode
 }
-
-
 
 pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     let (readable, writable) = flags.is_read_write();
@@ -135,7 +133,6 @@ impl OSInode {
         stat.size = inode_stat.size;
         stat.inode = inode_stat.inode;
     }
-
 }
 
 impl File for OSInode {
@@ -159,7 +156,7 @@ impl File for OSInode {
     }
 
     fn fstat(&self) -> Option<FileStat> {
-        let mut stat = FileStat::empty();;
+        let mut stat = FileStat::empty();
         self.read_stat(&mut stat);
         Some(stat)
     }
