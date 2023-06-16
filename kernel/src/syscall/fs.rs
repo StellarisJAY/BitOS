@@ -1,4 +1,5 @@
-use crate::fs::inode::{open_file, OpenFlags};
+use crate::fs::inode::{open_file, OpenFlags, find, OSInode};
+use crate::fs::FileStat;
 use crate::fs::UserBuffer;
 use crate::task::scheduler::{current_proc, current_task_translate_string};
 use alloc::sync::Arc;
@@ -47,4 +48,38 @@ pub fn sys_close(fd: usize) -> isize {
     }
     inner.fd_table[fd].take();
     0
+}
+
+pub fn sys_stat(path: usize, stat: usize) -> isize {
+    let proc = current_proc();
+    let name = proc.translate_string(path);
+    let file_stat: &mut FileStat;
+    unsafe {
+        let ptr = proc.translate_va(stat) as *mut FileStat;
+        file_stat = ptr.as_mut().unwrap();
+    }
+    if let Some(inode) = find(name.as_str()) {
+        inode.read_stat(file_stat);
+        return 0;
+    }
+    return -1;
+}
+
+pub fn sys_fstat(fd: usize, stat: usize) -> isize {
+    let proc = current_proc();
+    let file_stat: &mut FileStat;
+    unsafe {
+        let ptr = proc.translate_va(stat) as *mut FileStat;
+        file_stat = ptr.as_mut().unwrap();
+    }
+    let inner = proc.borrow_inner();
+    if fd >= inner.fd_table.len() || inner.fd_table[fd].is_none() {
+        return -1;
+    }
+    let file = inner.fd_table[fd].as_ref().unwrap();
+    if let Some(fstat) = file.fstat() {
+        *file_stat = fstat;
+        return 0;
+    }
+    return -1;
 }

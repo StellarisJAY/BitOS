@@ -7,6 +7,8 @@ pub mod time;
 
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
+const SYSCALL_STAT: usize = 2001;
+const SYSCALL_FSTAT: usize = 2002;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
@@ -55,6 +57,8 @@ pub fn handle_syscall(id: usize, args: [usize; 3]) -> isize {
 
         SYSCALL_OPEN => fs::sys_open(args[0], args[1] as u32),
         SYSCALL_CLOSE => fs::sys_close(args[0]),
+        SYSCALL_STAT => fs::sys_stat(args[0], args[1]),
+        SYSCALL_FSTAT => fs::sys_fstat(args[0], args[1]),
         _ => {
             debug!("unsupported syscall: {}", id);
             panic!("unsupported syscall");

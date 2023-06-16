@@ -2,6 +2,8 @@ use core::arch::asm;
 
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
+const SYSCALL_STAT: usize = 2001;
+const SYSCALL_FSTAT: usize = 2002;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
@@ -106,4 +108,12 @@ pub fn open(path: &str, flags: u32) -> isize {
 
 pub fn close(fd: usize) -> isize {
     ecall(SYSCALL_CLOSE, [fd, 0, 0])
+}
+
+pub fn stat(path: &str, stat_ptr: usize) -> isize {
+    ecall(SYSCALL_STAT, [path.as_ptr() as usize, stat_ptr, 0])
+}
+
+pub fn fstat(fd: usize, stat_ptr: usize) -> isize {
+    ecall(SYSCALL_FSTAT, [fd, stat_ptr, 0])
 }

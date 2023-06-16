@@ -1,4 +1,5 @@
-use super::{File, UserBuffer};
+use core::borrow::Borrow;
+use super::{File, UserBuffer, FileStat};
 use crate::driver::blk::BLOCK_DEVICE;
 use alloc::string::String;
 use alloc::sync::Arc;
@@ -48,6 +49,8 @@ pub struct OSInodeInner {
     inode: Arc<Inode>, // 文件系统inode
 }
 
+
+
 pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     let (readable, writable) = flags.is_read_write();
     if flags.contains(OpenFlags::CREATE) {
@@ -70,6 +73,10 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
             None
         }
     }
+}
+
+pub fn find(name: &str) -> Option<Arc<OSInode>> {
+    ROOT_INODE.find(name).map(|inode| Arc::new(inode))
 }
 
 #[allow(unused)]
@@ -118,6 +125,17 @@ impl OSInode {
             .create(name, dir)
             .map(|inode| OSInode::new(readable, writable, inode))
     }
+
+    pub fn read_stat(&self, stat: &mut FileStat) {
+        let inner = self.inner.borrow();
+        let inode_stat = inner.lock().inode.read_stat();
+        stat.blocks = inode_stat.blocks;
+        stat.index_blocks = inode_stat.index_blocks;
+        stat.io_block = inode_stat.io_block;
+        stat.size = inode_stat.size;
+        stat.inode = inode_stat.inode;
+    }
+
 }
 
 impl File for OSInode {
@@ -138,6 +156,12 @@ impl File for OSInode {
             offset += bytes.len();
         });
         return offset;
+    }
+
+    fn fstat(&self) -> Option<FileStat> {
+        let mut stat = FileStat::empty();;
+        self.read_stat(&mut stat);
+        Some(stat)
     }
 }
 
