@@ -16,6 +16,10 @@ const USER_HEAP_SIZE: usize = 4096 * 1024;
 static HEAP: buddy_system_allocator::LockedHeap = buddy_system_allocator::LockedHeap::new();
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
+extern crate alloc;
+
+use alloc::vec::Vec;
+
 fn init_heap() {
     unsafe {
         let mut heap = HEAP.lock();
@@ -24,15 +28,30 @@ fn init_heap() {
     }
 }
 
+// argc为命令行参数个数，argv为命令行参数指针数组的地址
 #[no_mangle]
-pub extern "C" fn _start() {
+pub extern "C" fn _start(argc: usize, argv: usize) {
     init_heap();
-    exit(main());
+    let mut args: Vec<&'static str> = Vec::new();
+    unsafe {
+        for i in 0..argc {
+            // 第i个参数的指针
+            let ptr = ((argv + i * core::mem::size_of::<usize>()) as *const usize).read_volatile();
+            let mut length: usize = 0;
+            // 每个参数为/0结尾的字符串
+            while ((ptr + length) as *const u8).read_volatile() != 0 {
+                length += 1;
+            }
+            let buf = core::slice::from_raw_parts(ptr as *const u8, length);
+            args.push(core::str::from_utf8(buf).unwrap());
+        }
+    }
+    exit(main(argc, args.as_slice()));
 }
 
 #[linkage = "weak"]
 #[no_mangle]
-fn main() -> i32 {
+fn main(argc: usize, argv: &[&'static str]) -> i32 {
     panic!("no main found")
 }
 
@@ -79,9 +98,8 @@ pub fn yield_() {
     syscall::yield_();
 }
 
-pub fn spawn(name: &str) -> Option<usize> {
-    let buf = name.as_bytes();
-    let res = syscall::spawn(buf);
+pub fn spawn(name: &str, args: &[*const u8]) -> Option<usize> {
+    let res = syscall::spawn(name, args);
     if res == -1 {
         return None;
     }

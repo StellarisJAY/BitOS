@@ -70,8 +70,11 @@ pub fn wait_tid(tid: isize) -> isize {
     ecall(SYSCALL_WAITTID, [tid as usize, 0, 0])
 }
 
-pub fn spawn(buf: &[u8]) -> isize {
-    ecall(SYSCALL_SPAWN, [buf.as_ptr() as usize, buf.len(), 0])
+pub fn spawn(name: &str, args: &[*const u8]) -> isize {
+    ecall(
+        SYSCALL_SPAWN,
+        [name.as_ptr() as usize, args.as_ptr() as usize, args.len()],
+    )
 }
 
 pub fn mutex_create(blocking: bool) -> isize {
