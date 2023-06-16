@@ -6,6 +6,7 @@ extern crate user_lib;
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use user_lib::utils::{get_char, put_char};
 
 const CR: u8 = b'\r';
@@ -32,7 +33,23 @@ pub fn main() -> i32 {
                     break;
                 }
                 put_char(b'\n');
-                if let Some(pid) = user_lib::spawn(cmd.as_str()) {
+                
+                // 按空格拆分字符串
+                let parts: Vec<_> = cmd.split_whitespace().collect();
+                // 末尾添加\0
+                let mut str_parts: Vec<_> = parts
+                    .iter()
+                    .map(|arg| {
+                        let mut arg_string = String::from(*arg);
+                        arg_string.push('\0');
+                        return arg_string;
+                    })
+                    .collect();
+                let app = str_parts.remove(0);
+                // args转换为指针数组
+                let args: Vec<_> = str_parts.iter().map(|part| (*part).as_ptr()).collect();
+
+                if let Some(pid) = user_lib::spawn(app.as_str(), args.as_slice()) {
                     user_lib::wait_pid(pid);
                 } else {
                     println!("command not found");
