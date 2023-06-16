@@ -1,6 +1,7 @@
 use crate::block_cache::get_block_cache_entry;
 use crate::block_device::BlockDevice;
 use crate::inode::{data_blocks_for_size, index_blocks_for_size, DiskInode, InodeType};
+use crate::layout::BLOCK_SIZE;
 use crate::simple_fs::SimpleFileSystem;
 use alloc::string::String;
 use alloc::sync::Arc;
@@ -21,6 +22,15 @@ const DIR_ENTRY_SIZE: u32 = 32;
 pub struct DirEntry {
     name: [u8; DIR_NAME_LIMIT + 1],
     inode: u32,
+}
+
+#[repr(C)]
+pub struct InodeStat {
+    pub inode: u32,          // inode编号
+    pub size: u32,           // 大小
+    pub blocks: u32,         // 占用的IO块总数
+    pub io_block: u32,       // IO块大小
+    pub index_blocks: u32,   // 索引块数量
 }
 
 impl DirEntry {
@@ -95,6 +105,20 @@ impl Inode {
             fs: fs,
             block_dev: block_dev,
         };
+    }
+
+    pub fn read_stat(&self) -> InodeStat{
+        let mut stat = self.read_disk_inode(|disk_inode| {
+            InodeStat {
+                size: disk_inode.size(),
+                index_blocks: disk_inode.index_blocks(),
+                blocks: disk_inode.total_blocks(),
+                io_block: BLOCK_SIZE,
+                inode: self.block_id,
+            }
+        });
+        stat.inode = self.fs.lock().get_inode_seq(self.block_id, self.offset);
+        return stat;
     }
 
     fn read_disk_inode<F: FnMut(&DiskInode) -> V, V: Sized>(&self, mut f: F) -> V {

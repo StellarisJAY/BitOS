@@ -94,6 +94,10 @@ impl SimpleFileSystem {
         return (inode_block_id, inner_seq, inner_seq * INODE_SIZE);
     }
 
+    pub fn get_inode_seq(&self, block_id: u32, offset: u32) -> u32 {
+        (block_id - self.inode_start) * INODES_PER_BLOCK + offset / INODE_SIZE
+    }
+
     // alloc_inode分配一个inode，获取从0开始在inode范围内的序号
     pub fn alloc_inode(&mut self) -> Option<u32> {
         self.inode_bitmap.alloc(Arc::clone(&self.block_dev))
