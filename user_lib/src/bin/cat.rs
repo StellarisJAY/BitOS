@@ -10,9 +10,9 @@ use user_lib::file::{File, OpenFlags};
 
 #[no_mangle]
 pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
-    if argc == 0 {
+    if argc <= 1 || argv[0].is_empty() {
         println!("[error] empty file name");
-        return 0;
+        return -1;
     }
     let name = String::from(argv[0]);
     let mut cur_path = String::from(argv[argc - 1]);
