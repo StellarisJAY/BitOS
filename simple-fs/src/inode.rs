@@ -170,14 +170,15 @@ impl DiskInode {
         buf: &mut [u8],
         block_device: Arc<dyn BlockDevice>,
     ) -> usize {
-        if offset >= self.size || offset + size > self.size || buf.len() < size as usize {
+        if offset >= self.size {
             return 0;
         }
+        let read_end = (offset + size).min(self.size);
         let mut cur_block_seq = offset / BLOCK_SIZE;
         let mut cur_block_off = offset % BLOCK_SIZE;
         let mut cur_block_end = BLOCK_SIZE; // 非最后一个块的结束位置是BLOCK_SIZE
-        let last_block_seq = (offset + size) / BLOCK_SIZE;
-        let last_block_off = (offset + size) % BLOCK_SIZE;
+        let last_block_seq = read_end / BLOCK_SIZE;
+        let last_block_off = read_end % BLOCK_SIZE;
         let mut buf_off = 0;
         let mut length = 0;
         while cur_block_seq <= last_block_seq {
