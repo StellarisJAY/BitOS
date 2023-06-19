@@ -5,8 +5,8 @@ pub mod loader;
 pub mod pcb;
 pub mod pid;
 
-pub fn init_processors() {
-    let shell = open_file("shell", OpenFlags::RDONLY).unwrap();
+pub fn init_proc() {
+    let shell = open_file("/bin/shell", OpenFlags::RDONLY).unwrap();
     let data = shell.read_all();
     pcb::ProcessControlBlock::from_elf_data(data.as_slice());
 }

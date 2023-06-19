@@ -81,7 +81,7 @@ pub unsafe fn rust_main() {
         kernel!("kernel memory initialized");
         driver::init();
         kernel!("drivers initialized");
-        proc::init_processors();
+        proc::init_proc();
         mem::kernel::switch_to_kernel_space();
         kernel!("hart0 booted, kernel initialized");
         KERNEL_INITED.store(1, Ordering::SeqCst);
