@@ -37,6 +37,9 @@ bitflags! {
     }
 }
 
+const SEEK_SET: u8 = 0;
+const SEEK_CUR: u8 = 1;
+const SEEK_END: u8 = 2;
 // 内核inode
 pub struct OSInode {
     readable: bool,
@@ -133,32 +136,52 @@ impl OSInode {
         stat.size = inode_stat.size;
         stat.inode = inode_stat.inode;
     }
+
 }
 
 impl File for OSInode {
     fn read<'a>(&self, buf: &mut UserBuffer) -> usize {
-        let inner = self.inner.lock();
-        let mut offset: usize = 0;
+        let mut inner = self.inner.lock();
+        let size = inner.inode.size();
+        if inner.offset == size {
+            return 0;
+        }
+        let mut read_len: usize = 0;
         buf.foreach(|bytes| {
-            inner.inode.read(offset as u32, bytes);
-            offset += bytes.len();
+            inner.inode.read(inner.offset, bytes);
+            read_len += bytes.len().min((size - inner.offset) as usize);
+            inner.offset = (inner.offset + bytes.len() as u32).min(size);
+            return inner.offset == size;
         });
-        return offset;
+        return read_len;
     }
     fn write<'a>(&self, buf: &mut UserBuffer) -> usize {
-        let inner = self.inner.lock();
-        let mut offset: usize = 0;
+        let mut inner = self.inner.lock();
         buf.foreach(|bytes| {
-            inner.inode.write(offset as u32, bytes);
-            offset += bytes.len();
+            inner.inode.write(inner.offset, bytes);
+            inner.offset += bytes.len() as u32;
+            return true;
         });
-        return offset;
+        return inner.offset as usize;
     }
 
     fn fstat(&self) -> Option<FileStat> {
         let mut stat = FileStat::empty();
         self.read_stat(&mut stat);
         Some(stat)
+    }
+
+    fn lseek(&self, off: u32, from: u8) -> isize{
+        let offset: usize;
+        let mut inner = self.inner.lock();
+        let size = inner.inode.size();
+        match from {
+            SEEK_SET => inner.offset = off.min(size),
+            SEEK_CUR => inner.offset = (inner.offset + off).min(size),
+            SEEK_END => inner.offset = size - off,
+            _ => return -1,
+        }
+        return inner.offset as isize;
     }
 }
 

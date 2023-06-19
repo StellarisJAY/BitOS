@@ -83,3 +83,14 @@ pub fn sys_fstat(fd: usize, stat: usize) -> isize {
     }
     return -1;
 }
+
+
+pub fn sys_lseek(fd: usize, offset: u32, from: u8) -> isize {
+    let proc = current_proc();
+    let inner = proc.borrow_inner();
+    if fd >= inner.fd_table.len() || inner.fd_table[fd].is_none() {
+        return -1;
+    }
+    let file = inner.fd_table[fd].as_ref().unwrap();
+    return file.lseek(offset, from);
+}

@@ -4,6 +4,7 @@ const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_STAT: usize = 2001;
 const SYSCALL_FSTAT: usize = 2002;
+const SYSCALL_LSEEK: usize = 2003;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
@@ -119,4 +120,9 @@ pub fn stat(path: &str, stat_ptr: usize) -> isize {
 
 pub fn fstat(fd: usize, stat_ptr: usize) -> isize {
     ecall(SYSCALL_FSTAT, [fd, stat_ptr, 0])
+}
+
+
+pub fn lseek(fd: usize, offset: u32, from: u8) -> isize {
+    ecall(SYSCALL_LSEEK, [fd, offset as usize, from as usize])
 }

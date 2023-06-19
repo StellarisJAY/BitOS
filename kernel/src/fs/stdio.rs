@@ -29,6 +29,9 @@ impl File for Stdin {
     fn fstat(&self) -> Option<super::FileStat> {
         None
     }
+    fn lseek(&self, offset: u32, from: u8) -> isize {
+        -1
+    }
 }
 
 impl File for Stdout {
@@ -41,11 +44,16 @@ impl File for Stdout {
         buf.foreach(|bytes| {
             print_buf(bytes);
             sum += bytes.len();
+            return true;
         });
         return sum;
     }
 
     fn fstat(&self) -> Option<super::FileStat> {
         None
+    }
+
+    fn lseek(&self, offset: u32, from: u8) -> isize {
+        -1
     }
 }

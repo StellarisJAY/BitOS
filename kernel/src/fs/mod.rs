@@ -9,6 +9,7 @@ pub trait File: Send + Sync {
     fn read<'a>(&self, buf: &mut UserBuffer) -> usize;
     fn write<'a>(&self, buf: &mut UserBuffer) -> usize;
     fn fstat(&self) -> Option<FileStat>;
+    fn lseek(&self, offset: u32, from: u8) -> isize;
 }
 
 // 文件状态struct
@@ -92,9 +93,11 @@ impl<'a> UserBuffer<'_> {
         }
     }
 
-    pub fn foreach<F: FnMut(&mut [u8])>(&mut self, mut f: F) {
+    pub fn foreach<F: FnMut(&mut [u8]) -> bool>(&mut self, mut f: F) {
         for bytes in self.array.iter_mut() {
-            f(*bytes);
+            if !f(*bytes) {
+                break;
+            }
         }
     }
 

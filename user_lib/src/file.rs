@@ -11,6 +11,12 @@ bitflags! {
     }
 }
 
+pub enum SeekFrom {
+    START,
+    CUR,
+    END,
+}
+
 pub struct File(usize);
 
 // 文件状态struct
@@ -68,6 +74,15 @@ impl File {
             return Some(file_stat);
         }
         None
+    }
+
+    pub fn lseek(&self, offset: u32, from: SeekFrom) -> isize {
+        let from_val: u8 = match from {
+            SeekFrom::START => 0,
+            SeekFrom::CUR => 1,
+            SeekFrom::END => 2,
+        };
+        return syscall::lseek(self.0, offset, from_val);
     }
 }
 
