@@ -14,7 +14,8 @@ impl MemoryBlockDevice {
             fn _fs_start();
             fn _fs_end();
         }
-        kernel!("using Memory block device");
+        kernel!("using Memory block device, range: [{:#x}, {:#x}), size: {} MiB", _fs_start as usize, _fs_end as usize, 
+        (_fs_end as usize - _fs_start as usize) >> 20);
         Self {
             start: _fs_start as usize,
             end: _fs_end as usize,
@@ -29,7 +30,10 @@ impl MemoryBlockDevice {
 impl BlockDevice for MemoryBlockDevice {
     fn read(&self, block_id: u32, data: &mut [u8]) {
         let offset = self.block_id_to_mem_addr(block_id);
-        assert!(offset < self.end);
+        if offset >= self.end {
+            error!("offset out of range, blk: {}, off: {:#x}, end: {:#x}", block_id, offset, self.end);
+            panic!("mem blk read out of range");
+        }
         unsafe {
             let ptr = offset as *const u8;
             let block = core::slice::from_raw_parts(ptr, data.len());
@@ -39,7 +43,10 @@ impl BlockDevice for MemoryBlockDevice {
 
     fn write(&self, block_id: u32, data: &[u8]) {
         let offset = self.block_id_to_mem_addr(block_id);
-        assert!(offset < self.end);
+        if offset >= self.end {
+            error!("offset out of range, blk: {}, off: {:#x}, end: {:#x}", block_id, offset, self.end);
+            panic!("mem blk write out of range");
+        }
         unsafe {
             let ptr = offset as *mut u8;
             let block = core::slice::from_raw_parts_mut(ptr, data.len());
