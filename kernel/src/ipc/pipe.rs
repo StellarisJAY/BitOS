@@ -96,4 +96,7 @@ impl File for Pipe {
     fn fstat(&self) -> Option<crate::fs::FileStat> {
         None
     }
+    fn lseek(&self, offset: u32, from: u8) -> isize {
+        -1
+    }
 }
