@@ -12,6 +12,7 @@ const SYSCALL_WRITE: usize = 64;
 const SYSCALL_GET_TIME: usize = 169;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_YIELD: usize = 124;
+#[allow(unused)]
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_SPAWN: usize = 1220;
