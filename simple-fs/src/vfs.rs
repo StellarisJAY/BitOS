@@ -15,7 +15,7 @@ pub struct Inode {
     block_dev: Arc<dyn BlockDevice>,
 }
 
-const DIR_NAME_LIMIT: usize = 27;
+pub const DIR_NAME_LIMIT: usize = 27;
 const DIR_ENTRY_SIZE: u32 = 32;
 
 #[repr(C)]

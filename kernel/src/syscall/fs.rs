@@ -1,6 +1,7 @@
 use crate::fs::inode::{find, open_file, OSInode, OpenFlags};
 use crate::fs::FileStat;
 use crate::fs::UserBuffer;
+use simplefs::vfs::DIR_NAME_LIMIT;
 use crate::task::scheduler::{current_proc, current_task_translate_string};
 use alloc::sync::Arc;
 
@@ -93,4 +94,29 @@ pub fn sys_lseek(fd: usize, offset: u32, from: u8) -> isize {
     }
     let file = inner.fd_table[fd].as_ref().unwrap();
     return file.lseek(offset, from);
+}
+
+pub fn sys_ls_dir(path_ptr: usize, res: usize, size: usize) -> isize {
+    let proc = current_proc();
+    let name = proc.translate_string(path_ptr);
+    if let Some(file) = open_file(name.as_str(), OpenFlags::RDONLY) {
+        if !file.is_dir() {
+            return -2;
+        }
+        let files = file.ls().unwrap();
+        unsafe {
+            let res_ptr = proc.translate_va(res) as *const usize;
+            let result = core::slice::from_raw_parts(res_ptr, size);
+            for (i, ptr) in result.iter().enumerate() {
+                let addr = proc.translate_va(*ptr);
+                let name = core::slice::from_raw_parts_mut(addr as *mut u8, DIR_NAME_LIMIT + 1);
+                let fname_bytes = files[i].as_bytes();
+                &mut name[0..fname_bytes.len()].copy_from_slice(fname_bytes);
+            }
+        }
+        return 0;
+    } else {
+        return -1;
+    }
+    0
 }

@@ -1,10 +1,13 @@
 use core::arch::asm;
 
+use crate::println;
+
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_STAT: usize = 2001;
 const SYSCALL_FSTAT: usize = 2002;
 const SYSCALL_LSEEK: usize = 2003;
+const SYSCALL_LS_DIR: usize = 2004;
 
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_READ: usize = 63;
@@ -126,4 +129,8 @@ pub fn fstat(fd: usize, stat_ptr: usize) -> isize {
 
 pub fn lseek(fd: usize, offset: u32, from: u8) -> isize {
     ecall(SYSCALL_LSEEK, [fd, offset as usize, from as usize])
+}
+
+pub fn ls_dir(path: &str, result: &mut[usize]) -> isize {
+    ecall(SYSCALL_LS_DIR, [path.as_ptr() as usize, result.as_ptr() as usize, result.len()])
 }

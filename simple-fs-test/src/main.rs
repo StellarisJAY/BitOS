@@ -27,7 +27,8 @@ fn create_fs() {
         "../user_lib/target/riscv64gc-unknown-none-elf/release/help",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/echo",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/cat",
-        "../user_lib/target/riscv64gc-unknown-none-elf/release/stat"
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/stat",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/ls",
     ];
     let app_names: Vec<&str> = vec![
         "hello_world",
@@ -40,6 +41,7 @@ fn create_fs() {
         "echo",
         "cat",
         "stat",
+        "ls",
     ];
 
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));

@@ -1,6 +1,12 @@
 use crate::syscall;
 use crate::{read, write};
 use bitflags::bitflags;
+use alloc::vec::Vec;
+use alloc::string::String;
+
+const MAX_DIR_ENTRIES: usize = 128;
+const DIR_NAME_SIZE: usize = 28;
+const DIR_ENTRY_SIZE: usize = 32;
 
 bitflags! {
     pub struct OpenFlags: u32 {
@@ -45,6 +51,34 @@ pub fn stat(path: &str) -> Option<FileStat> {
         return Some(file_stat);
     }
     None
+}
+
+pub fn ls(path: &str) -> Result<Vec<String>, isize> {
+    if let Some(stat) = stat(path) {
+        if !stat.dir {
+            return Err(-2);
+        }
+        let count = stat.size as usize / DIR_ENTRY_SIZE;
+        let mut result: Vec<[u8; DIR_NAME_SIZE]> = Vec::new();
+        for _ in 0..count {
+            result.push([0u8; DIR_NAME_SIZE]);
+        }
+        let mut result_raw: Vec<_> = result.iter_mut().map(|item| item as *mut _ as usize).collect();
+
+        let code = syscall::ls_dir(path, result_raw.as_mut_slice());
+        
+        if code != 0 {
+            return Err(code);
+        }
+
+        let mut res: Vec<String> = Vec::new();
+        for raw in result.iter() {
+            res.push(String::from(core::str::from_utf8(raw).unwrap()));
+        }
+        return Ok(res);
+    }else {
+        return Err(-1);
+    }
 }
 
 impl File {
