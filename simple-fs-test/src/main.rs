@@ -26,6 +26,8 @@ fn create_fs() {
         "../user_lib/target/riscv64gc-unknown-none-elf/release/timeshard_test",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/help",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/echo",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/cat",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/stat"
     ];
     let app_names: Vec<&str> = vec![
         "hello_world",
@@ -36,10 +38,12 @@ fn create_fs() {
         "timeshard_test",
         "help",
         "echo",
+        "cat",
+        "stat",
     ];
 
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));
-    let mut fs = SimpleFileSystem::new(Arc::clone(&block_dev), 4096, 1);
+    let mut fs = SimpleFileSystem::new(Arc::clone(&block_dev), 8192, 1);
     let root_inode = fs.create_root_dir();
     println!("root inode seq: {}", root_inode);
     let (blk_id, _, offset) = fs.get_inode_position(root_inode);
@@ -80,7 +84,6 @@ impl FileBlockDev {
             .create_new(create)
             .open(path)
             .unwrap();
-        file.set_len(4096 * 4096).unwrap();
         return Self(Mutex::new(file));
     }
 }
