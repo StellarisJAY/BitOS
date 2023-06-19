@@ -52,32 +52,59 @@ pub struct OSInodeInner {
     inode: Arc<Inode>, // 文件系统inode
 }
 
-pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
+pub fn open_file(path: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     let (readable, writable) = flags.is_read_write();
     if flags.contains(OpenFlags::CREATE) {
         // 文件是否存在，不存在时需要创建
-        if let Some(inode) = ROOT_INODE.find(name) {
-            let inner = inode.inner.lock();
-            let inode = Arc::clone(&inner.inode);
-            return Some(Arc::new(OSInode::new(readable, writable, inode)));
+        if let Some(inode) = find(path) {
+            return Some(inode);
         } else {
-            return ROOT_INODE
-                .create(name, false, readable, writable)
-                .map(|inode| Arc::new(inode));
+            return create(path, false, readable, writable);
         }
     } else {
-        if let Some(inode) = ROOT_INODE.find(name) {
-            let inner = inode.inner.lock();
-            let inode = Arc::clone(&inner.inode);
-            return Some(Arc::new(OSInode::new(readable, writable, inode)));
-        } else {
-            None
-        }
+        return find(path);
     }
 }
 
-pub fn find(name: &str) -> Option<Arc<OSInode>> {
-    ROOT_INODE.find(name).map(|inode| Arc::new(inode))
+pub fn find(path: &str) -> Option<Arc<OSInode>> {
+    let s = String::from(path);
+    let parts: Vec<_> = s.split("/").collect();
+    let mut cur_inode = Arc::clone(&ROOT_INODE);
+    let depth = parts.len();
+    for (i, part) in parts.iter().enumerate() {
+        if *part == "" {
+            continue;
+        }
+        if let Some(next_inode) = cur_inode.find(*part) {
+            if i != depth - 1 && !next_inode.is_dir() {
+                return None;
+            }
+            cur_inode = Arc::new(next_inode);
+        }else {
+            return None;
+        }
+    }
+    return Some(cur_inode);
+}
+
+fn create(path: &str, dir: bool, readable: bool, writable: bool) -> Option<Arc<OSInode>>{
+    let s = String::from(path);
+    let mut parts: Vec<_> = s.split("/").collect();
+    let filename = parts.pop().unwrap();
+    let mut cur_inode = Arc::clone(&ROOT_INODE);
+    let depth = parts.len();
+    for (i, part) in parts.iter().enumerate() {
+        if let Some(next_inode) = cur_inode.find(*part) {
+            if !next_inode.is_dir() {
+                return None;
+            }
+            cur_inode = Arc::new(next_inode);
+        }else {
+            return None;
+        }
+    }
+    return cur_inode.create(filename, dir, readable, writable)
+    .map(|inode| Arc::new(inode));
 }
 
 #[allow(unused)]
@@ -135,6 +162,11 @@ impl OSInode {
         stat.io_block = inode_stat.io_block;
         stat.size = inode_stat.size;
         stat.inode = inode_stat.inode;
+        stat.dir = inode_stat.dir;
+    }
+
+    pub fn is_dir(&self) -> bool {
+        self.inner.lock().inode.is_dir()
     }
 
 }

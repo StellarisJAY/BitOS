@@ -31,6 +31,7 @@ pub struct InodeStat {
     pub blocks: u32,         // 占用的IO块总数
     pub io_block: u32,       // IO块大小
     pub index_blocks: u32,   // 索引块数量
+    pub dir: bool,
 }
 
 impl DirEntry {
@@ -115,6 +116,7 @@ impl Inode {
                 blocks: disk_inode.total_blocks(),
                 io_block: BLOCK_SIZE,
                 inode: self.block_id,
+                dir: disk_inode.is_dir(),
             }
         });
         stat.inode = self.fs.lock().get_inode_seq(self.block_id, self.offset);
@@ -154,6 +156,10 @@ impl Inode {
     pub fn ls(&self) -> Option<Vec<String>> {
         return self
             .read_disk_inode(|disk_inode| Self::list(disk_inode, Arc::clone(&self.block_dev)));
+    }
+
+    pub fn is_dir(&self) -> bool {
+        return self.read_disk_inode(|disk_inode| disk_inode.is_dir());
     }
 
     fn find_inode(

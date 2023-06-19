@@ -45,13 +45,13 @@ fn create_fs() {
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));
     let mut fs = SimpleFileSystem::new(Arc::clone(&block_dev), 8192, 1);
     let root_inode = fs.create_root_dir();
-    println!("root inode seq: {}", root_inode);
     let (blk_id, _, offset) = fs.get_inode_position(root_inode);
     let fs = Arc::new(Mutex::new(fs));
     let root_inode = Inode::new(blk_id, offset, Arc::clone(&fs), Arc::clone(&block_dev));
+    let bin = root_inode.create("bin", true).unwrap();
     println!("root inode got, creating files");
     for (i, name) in app_names.iter().enumerate() {
-        let inode = root_inode.create(name, false).unwrap();
+        let inode = bin.create(name, false).unwrap();
         let mut elf = OpenOptions::new()
             .read(true)
             .open(paths.get(i).unwrap())
@@ -60,6 +60,7 @@ fn create_fs() {
         elf.read_to_end(&mut data).expect("read elf file error");
         inode.write(0, data.as_slice());
     }
+    bin.ls().unwrap().iter().for_each(|s| println!("{}", s));
     fs.lock().fsync();
 }
 
@@ -69,11 +70,12 @@ fn open_fs() {
     let fs = Arc::new(Mutex::new(fs));
     println!("fs opened, listing files");
     let root_inode = fs.lock().root_inode(Arc::clone(&fs));
-    root_inode
+    let bin = root_inode.find("bin").unwrap();
+    bin
         .ls()
         .unwrap()
         .iter()
-        .for_each(|s| println!("name: {}, size: {}", s, root_inode.find(s).unwrap().size()));
+        .for_each(|s| println!("name: {}, size: {}", s, bin.find(s).unwrap().size()));
 }
 
 impl FileBlockDev {

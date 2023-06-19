@@ -28,6 +28,7 @@ pub struct FileStat {
     pub blocks: u32,       // 占用的IO块总数
     pub io_block: u32,     // IO块大小
     pub index_blocks: u32, // 索引块数量
+    pub dir: bool,
 }
 
 fn open(path: &str, flags: OpenFlags) -> isize {
@@ -84,6 +85,10 @@ impl File {
         };
         return syscall::lseek(self.0, offset, from_val);
     }
+
+    pub fn is_dir(&self) -> bool {
+        self.fstat().unwrap().dir
+    }
 }
 
 impl FileStat {
@@ -94,6 +99,7 @@ impl FileStat {
             blocks: 0,
             io_block: 0,
             index_blocks: 0,
+            dir: false,
         }
     }
 }
