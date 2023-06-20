@@ -77,7 +77,7 @@ pub fn sys_spawn(ptr: usize, args: usize, args_count: usize) -> isize {
     }
     let app_name = parent.translate_string(ptr);
     // 文件系统加载app数据
-    if let Some(file) = open_file(app_name.as_str(), OpenFlags::RDONLY) {
+    if let Ok(file) = open_file(app_name.as_str(), OpenFlags::RDONLY) {
         let proc = ProcessControlBlock::from_elf_data(file.read_all().as_slice());
         let mut child_inner = proc.borrow_inner();
         let mut parent_inner = parent.borrow_inner();

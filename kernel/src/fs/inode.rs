@@ -7,7 +7,7 @@ use bitflags::bitflags;
 use core::borrow::Borrow;
 use lazy_static::lazy_static;
 use simplefs::simple_fs::SimpleFileSystem;
-use simplefs::vfs::Inode;
+use simplefs::vfs::{Inode, NOT_DIR_ERROR, FILE_EXIST_ERROR, FILE_NOT_FOUND_ERROR};
 use spin::mutex::Mutex;
 
 lazy_static! {
@@ -34,12 +34,14 @@ bitflags! {
         const WRONLY = 1 << 0;
         const RDWR = 1 << 1;
         const CREATE = 1 << 9;
+        const DIR = 1 << 8;
     }
 }
 
 const SEEK_SET: u8 = 0;
 const SEEK_CUR: u8 = 1;
 const SEEK_END: u8 = 2;
+
 // 内核inode
 pub struct OSInode {
     readable: bool,
@@ -52,21 +54,25 @@ pub struct OSInodeInner {
     inode: Arc<Inode>, // 文件系统inode
 }
 
-pub fn open_file(path: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
+pub fn open_file(path: &str, flags: OpenFlags) -> Result<Arc<OSInode>, isize> {
     let (readable, writable) = flags.is_read_write();
     if flags.contains(OpenFlags::CREATE) {
         // 文件是否存在，不存在时需要创建
-        if let Some(inode) = find(path) {
-            return Some(inode);
+        if let Ok(inode) = find(path) {
+            return Ok(inode);
         } else {
-            return create(path, false, readable, writable);
+            return create(path, flags.is_dir(), readable, writable);
         }
     } else {
         return find(path);
     }
 }
 
-pub fn find(path: &str) -> Option<Arc<OSInode>> {
+pub fn find(path: &str) -> Result<Arc<OSInode>, isize> {
+    // 根目录
+    if path.is_empty() || path == "/" {
+        return Ok(ROOT_INODE.clone());
+    }
     let s = String::from(path);
     let parts: Vec<_> = s.split("/").collect();
     let mut cur_inode = Arc::clone(&ROOT_INODE);
@@ -77,17 +83,17 @@ pub fn find(path: &str) -> Option<Arc<OSInode>> {
         }
         if let Some(next_inode) = cur_inode.find(*part) {
             if i != depth - 1 && !next_inode.is_dir() {
-                return None;
+                return Err(NOT_DIR_ERROR);
             }
             cur_inode = Arc::new(next_inode);
         }else {
-            return None;
+            return Err(FILE_NOT_FOUND_ERROR);
         }
     }
-    return Some(cur_inode);
+    return Ok(cur_inode);
 }
 
-fn create(path: &str, dir: bool, readable: bool, writable: bool) -> Option<Arc<OSInode>>{
+fn create(path: &str, dir: bool, readable: bool, writable: bool) -> Result<Arc<OSInode>, isize>{
     let s = String::from(path);
     let mut parts: Vec<_> = s.split("/").collect();
     let filename = parts.pop().unwrap();
@@ -96,15 +102,14 @@ fn create(path: &str, dir: bool, readable: bool, writable: bool) -> Option<Arc<O
     for (i, part) in parts.iter().enumerate() {
         if let Some(next_inode) = cur_inode.find(*part) {
             if !next_inode.is_dir() {
-                return None;
+                return Err(NOT_DIR_ERROR);
             }
             cur_inode = Arc::new(next_inode);
         }else {
-            return None;
+            return Err(FILE_NOT_FOUND_ERROR);
         }
     }
-    return cur_inode.create(filename, dir, readable, writable)
-    .map(|inode| Arc::new(inode));
+    return cur_inode.create(filename, dir, readable, writable);
 }
 
 #[allow(unused)]
@@ -146,12 +151,12 @@ impl OSInode {
         self.inner.lock().inode.size()
     }
 
-    pub fn create(&self, name: &str, dir: bool, readable: bool, writable: bool) -> Option<OSInode> {
-        self.inner
+    pub fn create(&self, name: &str, dir: bool, readable: bool, writable: bool) -> Result<Arc<OSInode>, isize> {
+        let res = self.inner
             .lock()
             .inode
-            .create(name, dir)
-            .map(|inode| OSInode::new(readable, writable, inode))
+            .create(name, dir);
+        return res.map(|inode| Arc::new(OSInode::new(readable, writable, inode)));
     }
 
     pub fn read_stat(&self, stat: &mut FileStat) {
@@ -245,5 +250,12 @@ impl OpenFlags {
         } else {
             (true, true)
         }
+    }
+
+    fn is_dir(&self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        self.contains(OpenFlags::DIR)
     }
 }

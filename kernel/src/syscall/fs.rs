@@ -32,12 +32,13 @@ pub fn sys_read(fd: usize, buf_ptr: usize, len: usize) -> isize {
 pub fn sys_open(path: usize, flags: u32) -> isize {
     let proc = current_proc();
     let name = proc.translate_string(path);
-    if let Some(file) = open_file(name.as_str(), OpenFlags::from_bits(flags).unwrap()) {
-        let fd = proc.alloc_fd();
-        proc.borrow_inner().fd_table[fd] = Some(file);
-        return fd as isize;
-    } else {
-        return -1;
+    match open_file(name.as_str(), OpenFlags::from_bits(flags).unwrap()) {
+        Ok(file) => {
+            let fd = proc.alloc_fd();
+            proc.borrow_inner().fd_table[fd] = Some(file);
+            return fd as isize;
+        },
+        Err(code) => return code,
     }
 }
 
@@ -59,7 +60,7 @@ pub fn sys_stat(path: usize, stat: usize) -> isize {
         let ptr = proc.translate_va(stat) as *mut FileStat;
         file_stat = ptr.as_mut().unwrap();
     }
-    if let Some(inode) = find(name.as_str()) {
+    if let Ok(inode) = find(name.as_str()) {
         inode.read_stat(file_stat);
         return 0;
     }
@@ -99,7 +100,7 @@ pub fn sys_lseek(fd: usize, offset: u32, from: u8) -> isize {
 pub fn sys_ls_dir(path_ptr: usize, res: usize, size: usize) -> isize {
     let proc = current_proc();
     let name = proc.translate_string(path_ptr);
-    if let Some(file) = open_file(name.as_str(), OpenFlags::RDONLY) {
+    if let Ok(file) = open_file(name.as_str(), OpenFlags::RDONLY) {
         if !file.is_dir() {
             return -2;
         }

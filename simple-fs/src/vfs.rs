@@ -34,6 +34,11 @@ pub struct InodeStat {
     pub dir: bool,
 }
 
+pub const FILE_EXIST_ERROR: isize = -1;
+pub const NOT_DIR_ERROR: isize = -2;
+pub const FILE_NOT_FOUND_ERROR: isize = -3;
+pub const CREATE_FILE_ERROR: isize = -4;
+
 impl DirEntry {
     pub fn new(name: &str, inode: u32) -> Self {
         let mut entry = Self {
@@ -210,14 +215,14 @@ impl Inode {
         return Some(res);
     }
 
-    pub fn create(&self, name: &str, mkdir: bool) -> Option<Arc<Inode>> {
+    pub fn create(&self, name: &str, mkdir: bool) -> Result<Arc<Inode>, isize> {
         // 修改当前inode对应的disk inode，返回是否是dir，文件是否已经存在，以及文件的inode号
-        let (is_dir, file_exists, inode_seq) = self.modify_disk_inode(|disk_inode| {
+        let res = self.modify_disk_inode(|disk_inode| {
             if !disk_inode.is_dir() {
-                return (false, false, None);
+                return Err(NOT_DIR_ERROR);
             }
             if let Some(_) = Self::find_inode(disk_inode, name, Arc::clone(&self.block_dev)) {
-                return (true, true, None);
+                return Err(FILE_EXIST_ERROR);
             }
             let mut file_system = self.fs.lock();
             let inode_seq = file_system.alloc_inode().unwrap();
@@ -233,13 +238,14 @@ impl Inode {
                 entry.as_bytes(),
                 Arc::clone(&self.block_dev),
             );
-            return (true, false, Some(inode_seq));
+            return Ok(inode_seq);
         });
-        if !is_dir || file_exists {
-            return None;
+        if let Err(code) = res {
+            return Err(code);
         }
+        let inode_seq = res.unwrap();
         // 创建inode和diskinode
-        let (block_id, _, offset) = self.fs.lock().get_inode_position(inode_seq.unwrap());
+        let (block_id, _, offset) = self.fs.lock().get_inode_position(inode_seq);
         let inode = Inode::new(
             block_id,
             offset,
@@ -254,7 +260,7 @@ impl Inode {
                 disk_inode.set_type(InodeType::File);
             }
         });
-        return Some(Arc::new(inode));
+        return Ok(Arc::new(inode));
     }
 
     pub fn read(&self, offset: u32, buf: &mut [u8]) -> usize {
