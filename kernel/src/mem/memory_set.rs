@@ -192,6 +192,7 @@ impl MemorySet {
                 }
             }
             offset = 0;
+            vpn = VirtPageNumber(vpn.0 + 1); // 字符串可能跨越了多个虚拟页
         }
         return String::from_utf8(data).unwrap();
     }
