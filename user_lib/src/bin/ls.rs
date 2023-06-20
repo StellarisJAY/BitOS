@@ -14,7 +14,7 @@ pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
         println!("[error] empty file name");
         return -1;
     }
-    let absolute_path: String;
+    let mut absolute_path: String;
     if argc == 1 {
         absolute_path = String::from(argv[0]);
     }else {
@@ -22,11 +22,23 @@ pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
         let mut cur_path = String::from(argv[argc - 1]);
         absolute_path = get_absolute_path(&name, &mut cur_path);
     }
-
+    if !absolute_path.ends_with('\0') {
+        absolute_path.push('\0');
+    }
     match file::ls(absolute_path.as_str()) {
         Ok(files) => {
+            println!("{:>10}  {:4}  {:28}", "size", "type", "name");
             for f in files {
-                println!("{:28}", f);
+                let mut file_path = String::from(absolute_path.clone().trim_matches('\0'));
+                if !file_path.ends_with('/') {
+                    file_path.push('/');
+                }
+                file_path.push_str(f.trim_matches('\0'));
+                file_path.push('\0');
+                if let Some(stat) = file::stat(file_path.as_str()) {
+                    let _type = if stat.dir {"dir"} else {"file"};
+                    println!("{:10}  {:4}  {:28}", stat.size, _type, f);
+                }
             }
         },
         Err(code) => return code as i32,

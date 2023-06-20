@@ -14,6 +14,7 @@ bitflags! {
         const WRONLY = 1 << 0;
         const RDWR = 1 << 1;
         const CREATE = 1 << 9;
+        const DIR = 1 << 8;
     }
 }
 
@@ -36,6 +37,10 @@ pub struct FileStat {
     pub index_blocks: u32, // 索引块数量
     pub dir: bool,
 }
+
+pub const FILE_EXIST_ERROR: isize = -1;
+pub const NOT_DIR_ERROR: isize = -2;
+pub const FILE_NOT_FOUND_ERROR: isize = -3;
 
 fn open(path: &str, flags: OpenFlags) -> isize {
     syscall::open(path, flags.bits())
@@ -82,12 +87,12 @@ pub fn ls(path: &str) -> Result<Vec<String>, isize> {
 }
 
 impl File {
-    pub fn open(path: &str, flags: OpenFlags) -> Option<Self> {
-        let fd = open(path, flags);
-        if fd == -1 {
-            return None;
+    pub fn open(path: &str, flags: OpenFlags) -> Result<Self, isize> {
+        let code = open(path, flags);
+        if code < 0 {
+            return Err(code);
         } else {
-            return Some(Self(fd as usize));
+            return Ok(Self(code as usize));
         }
     }
 

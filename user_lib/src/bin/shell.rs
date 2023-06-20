@@ -12,6 +12,7 @@ use user_lib::utils::{get_char, put_char};
 use alloc::collections::BTreeSet;
 use lazy_static::lazy_static;
 use user_lib::sync::cell::SafeCell;
+use user_lib::file::{FILE_EXIST_ERROR, NOT_DIR_ERROR, FILE_NOT_FOUND_ERROR};
 
 const CR: u8 = b'\r';
 const LF: u8 = b'\n';
@@ -92,7 +93,7 @@ fn process_args(args: Vec<String>) -> Vec<String> {
 }
 
 fn exec_cd(args: Vec<String>, cur_path: &mut String) {
-    if args.len() < 1 {
+    if args.len() <= 1 {
         println!("[error] empty path");
         return;
     }
@@ -100,18 +101,26 @@ fn exec_cd(args: Vec<String>, cur_path: &mut String) {
     let path = args[0].as_str();
     let length = cur_path.len();
     cur_path.push_str(path);
-    if let Some(file) = File::open(cur_path.as_str(), OpenFlags::RDONLY) {
-        if !file.is_dir() {
-            println!("Not a directory: {}", path);
+
+    match File::open(cur_path.as_str(), OpenFlags::RDONLY) {
+        Ok(file) => {
+            if !file.is_dir() {
+                println!("[error] Not a directory: {}", path);
+                cur_path.truncate(length);
+                return;
+            }
+            cur_path.pop();
+            return;
+        },
+        Err(code) => {
+            match code {
+                NOT_DIR_ERROR => println!("[error] Not a directory: {}", path),
+                FILE_NOT_FOUND_ERROR => println!("File not found: {}", path),
+                _ => println!("[error] fs error, code: {}", code),
+            }
             cur_path.truncate(length);
             return;
         }
-        cur_path.pop();
-        return;
-    }else {
-        println!("can't open directory: {}", path);
-        cur_path.truncate(length);
-        return;
     }
 }
 
@@ -146,11 +155,11 @@ fn exec_type(args: Vec<String>, abs_path: &mut String) {
             abs_path.push_str(cmd.as_str());
             abs_path.push('\0');
             match File::open(abs_path.as_str(), OpenFlags::RDONLY) {
-                Some(file) => {
+                Ok(file) => {
                     println!("{} is {}", cmd, abs_path);
                     file.close();
                 },
-                None => println!("type: {} not found", cmd),
+                Err(_) => println!("type: {} not found", cmd),
             }
             abs_path.truncate(length);
         }

@@ -18,18 +18,20 @@ pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
     let mut cur_path = String::from(argv[argc - 1]);
     let absolute_path = get_absolute_path(&name, &mut cur_path);
 
-    if let Some(file) = File::open(absolute_path.as_str(), OpenFlags::RDONLY) {
-        let mut buf: [u8; 512] = [0; 512];
-        while file.read(&mut buf) != 0 {
-            print!("{}", String::from_utf8_lossy(&buf));
-            buf.fill(0);
+    match File::open(absolute_path.as_str(), OpenFlags::RDONLY) {
+        Ok(file) => {
+            let mut buf: [u8; 512] = [0; 512];
+            while file.read(&mut buf) != 0 {
+                print!("{}", String::from_utf8_lossy(&buf));
+                buf.fill(0);
+            }
+            println!("");
+            file.close();
+        },
+        Err(code) => {
+            println!("[error] File not found: {}", name);
         }
-        println!("");
-        file.close();
-    } else {
-        println!("[error] File not found: {}", name);
     }
-
     return 0;
 }
 

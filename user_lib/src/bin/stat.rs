@@ -18,17 +18,19 @@ pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
     let mut cur_path = String::from(argv[argc - 1]);
     let absolute_path = get_absolute_path(&name, &mut cur_path);
     
-    if let Some(file) = File::open(absolute_path.as_str(), OpenFlags::RDONLY) {
-        let stat = file.fstat().unwrap();
-        println!("File:  {}", argv[0]);
-        println!("Type:  {}", if stat.dir {"directory"} else {"regular file"});
-        println!("Size:  {:<16} Blocks:       {:<16} IO Block: {:<16}", stat.size, stat.blocks, stat.io_block);
-        println!("Inode: {:<16} Index Blocks: {:<16}", stat.inode, stat.index_blocks);
-        file.close();
-    } else {
-        println!("[error] File not found: {}", absolute_path);
+    match File::open(absolute_path.as_str(), OpenFlags::RDONLY) {
+        Ok(file) => {
+            let stat = file.fstat().unwrap();
+            println!("File:  {}", argv[0]);
+            println!("Type:  {}", if stat.dir {"directory"} else {"regular file"});
+            println!("Size:  {:<16} Blocks:       {:<16} IO Block: {:<16}", stat.size, stat.blocks, stat.io_block);
+            println!("Inode: {:<16} Index Blocks: {:<16}", stat.inode, stat.index_blocks);
+            file.close();
+        },
+        Err(_) => {
+            println!("[error] File not found: {}", absolute_path);
+        }
     }
-
     return 0;
 }
 
