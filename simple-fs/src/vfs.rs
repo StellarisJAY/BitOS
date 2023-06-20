@@ -251,7 +251,7 @@ impl Inode {
             if mkdir {
                 disk_inode.set_type(InodeType::Directory);
             } else {
-                disk_inode.set_type(InodeType::Directory);
+                disk_inode.set_type(InodeType::File);
             }
         });
         return Some(Arc::new(inode));
