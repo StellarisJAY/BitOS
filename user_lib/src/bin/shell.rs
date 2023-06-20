@@ -5,18 +5,36 @@
 extern crate user_lib;
 extern crate alloc;
 
+use user_lib::{spawn, wait_pid};
 use alloc::string::String;
 use alloc::vec::Vec;
 use user_lib::utils::{get_char, put_char};
+use alloc::collections::BTreeSet;
+use lazy_static::lazy_static;
+use user_lib::sync::cell::SafeCell;
 
 const CR: u8 = b'\r';
 const LF: u8 = b'\n';
 const BS: u8 = 0x8;
 const DL: u8 = 0x7f;
 
+// shell builtin 命令集合
+lazy_static! {
+    static ref BUILTINS: SafeCell<BTreeSet<String>> = SafeCell::new(BTreeSet::new());
+}
+
+fn init() {
+    let mut builtins = BUILTINS.borrow_inner();
+    builtins.insert(String::from("cd"));
+    builtins.insert(String::from("type"));
+}
+
 #[no_mangle]
 pub fn main() -> i32 {
+    init();
+    // 命令程序所在的目录
     let mut app_absolute_path = String::from("/bin/");
+    // shell当前所在的目录
     let mut cur_path = String::from("/");
     println!("User shell entered, input \"help\" to list available commands...");
     print!("{} >>> ", cur_path);
@@ -35,34 +53,21 @@ pub fn main() -> i32 {
                     break;
                 }
                 put_char(b'\n');
-                
                 // 按空格拆分字符串
-                let mut parts: Vec<_> = cmd.split_whitespace().collect();
-                parts.push(cur_path.as_str());
-                // 末尾添加\0
-                let mut str_parts: Vec<_> = parts
-                    .iter()
-                    .map(|arg| {
-                        let mut arg_string = String::from(*arg);
-                        arg_string.push('\0');
-                        return arg_string;
-                    })
-                    .collect();
-                let app: String = str_parts.remove(0);
-                let path_length: usize = app_absolute_path.len();
-                if app == "cd\0" {
-                    cd(str_parts, &mut cur_path);
-                }else {
-                    app_absolute_path.push_str(app.as_str());
-                    // args转换为指针数组
-                    let args: Vec<_> = str_parts.iter().map(|part| (*part).as_ptr()).collect();
-                    if let Some(pid) = user_lib::spawn(app_absolute_path.as_str(), args.as_slice()) {
-                        user_lib::wait_pid(pid);
-                    } else {
-                        println!("command not found");
-                    }
-                    app_absolute_path.truncate(path_length);
+                let mut args: Vec<_> = cmd.split_whitespace()
+                .map(|arg| String::from(arg))
+                .collect();
+                // 将shell当前的目录添加到参数列表末尾
+                args.push(cur_path.clone());
+                // 获取要执行的命令
+                let app = args.remove(0);
+
+                match app.as_str() {
+                    "cd" => exec_cd(args, &mut cur_path),
+                    "type" => exec_type(args, &mut app_absolute_path),
+                    _ => _ = exec_app(args, app.clone(), &mut app_absolute_path),
                 }
+
                 cmd.clear();
                 print!("{} >>> ", cur_path);
             }
@@ -77,11 +82,21 @@ pub fn main() -> i32 {
 
 use user_lib::file::{File, OpenFlags};
 
-fn cd(args: Vec<String>, cur_path: &mut String) {
+// 将参数转换成\0结尾的C字符串
+fn process_args(args: Vec<String>) -> Vec<String> {
+    return args.iter().map(|arg| {
+        let mut c_arg = arg.clone();
+        c_arg.push('\0');
+        return c_arg;
+    }).collect();
+}
+
+fn exec_cd(args: Vec<String>, cur_path: &mut String) {
     if args.len() < 1 {
         println!("[error] empty path");
         return;
     }
+    let args = process_args(args);
     let path = args[0].as_str();
     let length = cur_path.len();
     cur_path.push_str(path);
@@ -97,5 +112,47 @@ fn cd(args: Vec<String>, cur_path: &mut String) {
         println!("can't open directory: {}", path);
         cur_path.truncate(length);
         return;
+    }
+}
+
+fn exec_app(args: Vec<String>, app: String, abs_path: &mut String) -> isize {
+    let length = abs_path.len();
+    abs_path.push_str(app.as_str());
+    abs_path.push('\0');
+
+    let c_args = process_args(args);
+    let args_ptrs: Vec<_> = c_args.iter().map(|arg| (*arg).as_ptr()).collect();
+    let code: isize;
+    if let Some(pid) = spawn(abs_path.as_str(), args_ptrs.as_slice()) {
+        code = wait_pid(pid);
+    } else {
+        println!("command not found");
+        code = 0;
+    }
+    abs_path.truncate(length);
+    return code;
+}
+
+fn exec_type(args: Vec<String>, abs_path: &mut String) {
+    let builtins = BUILTINS.borrow_inner();
+    for (i, cmd) in args.iter().enumerate() {
+        if i == args.len() - 1 {
+            continue;
+        }
+        if builtins.contains(cmd) {
+            println!("{} is a shell builtin", cmd);
+        }else {
+            let length = abs_path.len();
+            abs_path.push_str(cmd.as_str());
+            abs_path.push('\0');
+            match File::open(abs_path.as_str(), OpenFlags::RDONLY) {
+                Some(file) => {
+                    println!("{} is {}", cmd, abs_path);
+                    file.close();
+                },
+                None => println!("type: {} not found", cmd),
+            }
+            abs_path.truncate(length);
+        }
     }
 }
