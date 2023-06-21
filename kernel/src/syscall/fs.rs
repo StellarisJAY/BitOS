@@ -1,9 +1,9 @@
 use crate::fs::inode::{find, open_file, OSInode, OpenFlags};
 use crate::fs::FileStat;
 use crate::fs::UserBuffer;
-use simplefs::vfs::DIR_NAME_LIMIT;
 use crate::task::scheduler::{current_proc, current_task_translate_string};
 use alloc::sync::Arc;
+use simplefs::vfs::DIR_NAME_LIMIT;
 
 pub fn sys_write(fd: usize, buf_ptr: usize, len: usize) -> isize {
     let mut buf = UserBuffer::from_current_proc(buf_ptr, len);
@@ -37,7 +37,7 @@ pub fn sys_open(path: usize, flags: u32) -> isize {
             let fd = proc.alloc_fd();
             proc.borrow_inner().fd_table[fd] = Some(file);
             return fd as isize;
-        },
+        }
         Err(code) => return code,
     }
 }
@@ -85,7 +85,6 @@ pub fn sys_fstat(fd: usize, stat: usize) -> isize {
     }
     return -1;
 }
-
 
 pub fn sys_lseek(fd: usize, offset: u32, from: u8) -> isize {
     let proc = current_proc();

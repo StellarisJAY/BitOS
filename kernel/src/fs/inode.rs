@@ -7,7 +7,7 @@ use bitflags::bitflags;
 use core::borrow::Borrow;
 use lazy_static::lazy_static;
 use simplefs::simple_fs::SimpleFileSystem;
-use simplefs::vfs::{Inode, NOT_DIR_ERROR, FILE_EXIST_ERROR, FILE_NOT_FOUND_ERROR};
+use simplefs::vfs::{Inode, FILE_EXIST_ERROR, FILE_NOT_FOUND_ERROR, NOT_DIR_ERROR};
 use spin::mutex::Mutex;
 
 lazy_static! {
@@ -86,26 +86,29 @@ pub fn find(path: &str) -> Result<Arc<OSInode>, isize> {
                 return Err(NOT_DIR_ERROR);
             }
             cur_inode = Arc::new(next_inode);
-        }else {
+        } else {
             return Err(FILE_NOT_FOUND_ERROR);
         }
     }
     return Ok(cur_inode);
 }
 
-fn create(path: &str, dir: bool, readable: bool, writable: bool) -> Result<Arc<OSInode>, isize>{
+fn create(path: &str, dir: bool, readable: bool, writable: bool) -> Result<Arc<OSInode>, isize> {
     let s = String::from(path);
     let mut parts: Vec<_> = s.split("/").collect();
     let filename = parts.pop().unwrap();
     let mut cur_inode = Arc::clone(&ROOT_INODE);
     let depth = parts.len();
     for (i, part) in parts.iter().enumerate() {
+        if part.is_empty() {
+            continue;
+        }
         if let Some(next_inode) = cur_inode.find(*part) {
             if !next_inode.is_dir() {
                 return Err(NOT_DIR_ERROR);
             }
             cur_inode = Arc::new(next_inode);
-        }else {
+        } else {
             return Err(FILE_NOT_FOUND_ERROR);
         }
     }
@@ -151,11 +154,14 @@ impl OSInode {
         self.inner.lock().inode.size()
     }
 
-    pub fn create(&self, name: &str, dir: bool, readable: bool, writable: bool) -> Result<Arc<OSInode>, isize> {
-        let res = self.inner
-            .lock()
-            .inode
-            .create(name, dir);
+    pub fn create(
+        &self,
+        name: &str,
+        dir: bool,
+        readable: bool,
+        writable: bool,
+    ) -> Result<Arc<OSInode>, isize> {
+        let res = self.inner.lock().inode.create(name, dir);
         return res.map(|inode| Arc::new(OSInode::new(readable, writable, inode)));
     }
 
@@ -173,7 +179,6 @@ impl OSInode {
     pub fn is_dir(&self) -> bool {
         self.inner.lock().inode.is_dir()
     }
-
 }
 
 impl File for OSInode {
@@ -208,7 +213,7 @@ impl File for OSInode {
         Some(stat)
     }
 
-    fn lseek(&self, off: u32, from: u8) -> isize{
+    fn lseek(&self, off: u32, from: u8) -> isize {
         let offset: usize;
         let mut inner = self.inner.lock();
         let size = inner.inode.size();

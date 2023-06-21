@@ -1,6 +1,5 @@
 use core::cell::{RefCell, RefMut};
 
-
 pub struct SafeCell<T> {
     inner: RefCell<T>,
 }

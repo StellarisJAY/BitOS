@@ -26,11 +26,11 @@ pub struct DirEntry {
 
 #[repr(C)]
 pub struct InodeStat {
-    pub inode: u32,          // inode编号
-    pub size: u32,           // 大小
-    pub blocks: u32,         // 占用的IO块总数
-    pub io_block: u32,       // IO块大小
-    pub index_blocks: u32,   // 索引块数量
+    pub inode: u32,        // inode编号
+    pub size: u32,         // 大小
+    pub blocks: u32,       // 占用的IO块总数
+    pub io_block: u32,     // IO块大小
+    pub index_blocks: u32, // 索引块数量
     pub dir: bool,
 }
 
@@ -113,16 +113,14 @@ impl Inode {
         };
     }
 
-    pub fn read_stat(&self) -> InodeStat{
-        let mut stat = self.read_disk_inode(|disk_inode| {
-            InodeStat {
-                size: disk_inode.size(),
-                index_blocks: disk_inode.index_blocks(),
-                blocks: disk_inode.total_blocks(),
-                io_block: BLOCK_SIZE,
-                inode: self.block_id,
-                dir: disk_inode.is_dir(),
-            }
+    pub fn read_stat(&self) -> InodeStat {
+        let mut stat = self.read_disk_inode(|disk_inode| InodeStat {
+            size: disk_inode.size(),
+            index_blocks: disk_inode.index_blocks(),
+            blocks: disk_inode.total_blocks(),
+            io_block: BLOCK_SIZE,
+            inode: self.block_id,
+            dir: disk_inode.is_dir(),
         });
         stat.inode = self.fs.lock().get_inode_seq(self.block_id, self.offset);
         return stat;

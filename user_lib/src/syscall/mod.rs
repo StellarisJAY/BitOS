@@ -126,11 +126,17 @@ pub fn fstat(fd: usize, stat_ptr: usize) -> isize {
     ecall(SYSCALL_FSTAT, [fd, stat_ptr, 0])
 }
 
-
 pub fn lseek(fd: usize, offset: u32, from: u8) -> isize {
     ecall(SYSCALL_LSEEK, [fd, offset as usize, from as usize])
 }
 
-pub fn ls_dir(path: &str, result: &mut[usize]) -> isize {
-    ecall(SYSCALL_LS_DIR, [path.as_ptr() as usize, result.as_ptr() as usize, result.len()])
+pub fn ls_dir(path: &str, result: &mut [usize]) -> isize {
+    ecall(
+        SYSCALL_LS_DIR,
+        [
+            path.as_ptr() as usize,
+            result.as_ptr() as usize,
+            result.len(),
+        ],
+    )
 }

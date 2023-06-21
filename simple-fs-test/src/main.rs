@@ -29,6 +29,7 @@ fn create_fs() {
         "../user_lib/target/riscv64gc-unknown-none-elf/release/cat",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/stat",
         "../user_lib/target/riscv64gc-unknown-none-elf/release/ls",
+        "../user_lib/target/riscv64gc-unknown-none-elf/release/mkdir",
     ];
     let app_names: Vec<&str> = vec![
         "hello_world",
@@ -42,6 +43,7 @@ fn create_fs() {
         "cat",
         "stat",
         "ls",
+        "mkdir",
     ];
 
     let block_dev: Arc<dyn BlockDevice> = Arc::new(FileBlockDev::new("./fs.bin", true));
@@ -73,8 +75,7 @@ fn open_fs() {
     println!("fs opened, listing files");
     let root_inode = fs.lock().root_inode(Arc::clone(&fs));
     let bin = root_inode.find("bin").unwrap();
-    bin
-        .ls()
+    bin.ls()
         .unwrap()
         .iter()
         .for_each(|s| println!("name: {}, size: {}", s, bin.find(s).unwrap().size()));

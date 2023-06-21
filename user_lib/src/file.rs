@@ -1,8 +1,8 @@
 use crate::syscall;
 use crate::{read, write};
-use bitflags::bitflags;
-use alloc::vec::Vec;
 use alloc::string::String;
+use alloc::vec::Vec;
+use bitflags::bitflags;
 
 const MAX_DIR_ENTRIES: usize = 128;
 const DIR_NAME_SIZE: usize = 28;
@@ -68,10 +68,13 @@ pub fn ls(path: &str) -> Result<Vec<String>, isize> {
         for _ in 0..count {
             result.push([0u8; DIR_NAME_SIZE]);
         }
-        let mut result_raw: Vec<_> = result.iter_mut().map(|item| item as *mut _ as usize).collect();
+        let mut result_raw: Vec<_> = result
+            .iter_mut()
+            .map(|item| item as *mut _ as usize)
+            .collect();
 
         let code = syscall::ls_dir(path, result_raw.as_mut_slice());
-        
+
         if code != 0 {
             return Err(code);
         }
@@ -81,7 +84,7 @@ pub fn ls(path: &str) -> Result<Vec<String>, isize> {
             res.push(String::from(core::str::from_utf8(raw).unwrap()));
         }
         return Ok(res);
-    }else {
+    } else {
         return Err(-1);
     }
 }
@@ -146,15 +149,17 @@ impl FileStat {
 // 以当前目录为起点，根据相对路径获取绝对路径
 pub fn get_absolute_path(relative: String, cur_path: String) -> String {
     // 将所在当前目录 和 相对目录 拆分，过滤掉空字符串
-    let mut abs: Vec<_> = cur_path.clone()
-    .split('/')
-    .filter(|item| !item.is_empty())
-    .map(|item| String::from(item.trim_matches('\0')))
-    .collect();
-    let parts: Vec<_> = relative.split('/')
-    .filter(|item| !item.is_empty())
-    .map(|item| String::from(item.trim_matches('\0')))
-    .collect();
+    let mut abs: Vec<_> = cur_path
+        .clone()
+        .split('/')
+        .filter(|item| !item.is_empty())
+        .map(|item| String::from(item.trim_matches('\0')))
+        .collect();
+    let parts: Vec<_> = relative
+        .split('/')
+        .filter(|item| !item.is_empty())
+        .map(|item| String::from(item.trim_matches('\0')))
+        .collect();
 
     for part in parts.iter() {
         let raw = part.as_str();
@@ -166,7 +171,7 @@ pub fn get_absolute_path(relative: String, cur_path: String) -> String {
             if let None = abs.pop() {
                 break;
             }
-        }else {
+        } else {
             // abs入栈
             abs.push(part.clone());
         }
