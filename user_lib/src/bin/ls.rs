@@ -14,9 +14,15 @@ pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
         println!("[error] empty file name");
         return -1;
     }
-    let name = String::from(argv[0]);
+    // argv[n-1]是固定参数：当前目录
+    let relative = if argc == 1 {
+        // ls 不传参时，相对路径为空
+        String::from("")
+    } else {
+        String::from(argv[0])
+    };
     let cur_path = String::from(argv[argc - 1]);
-    let absolute_path = get_absolute_path(name, cur_path);
+    let absolute_path = get_absolute_path(relative, cur_path.clone());
     let mut path = absolute_path.clone();
     path.push('\0');
     match file::ls(path.as_str()) {
