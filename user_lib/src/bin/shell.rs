@@ -5,14 +5,14 @@
 extern crate user_lib;
 extern crate alloc;
 
-use user_lib::{spawn, wait_pid};
+use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
-use user_lib::utils::{get_char, put_char};
-use alloc::collections::BTreeSet;
 use lazy_static::lazy_static;
+use user_lib::file::{get_absolute_path, FILE_NOT_FOUND_ERROR, NOT_DIR_ERROR};
 use user_lib::sync::cell::SafeCell;
-use user_lib::file::{get_absolute_path, NOT_DIR_ERROR, FILE_NOT_FOUND_ERROR};
+use user_lib::utils::{get_char, put_char};
+use user_lib::{spawn, wait_pid};
 
 const CR: u8 = b'\r';
 const LF: u8 = b'\n';
@@ -55,9 +55,10 @@ pub fn main() -> i32 {
                 }
                 put_char(b'\n');
                 // 按空格拆分字符串
-                let mut args: Vec<_> = cmd.split_whitespace()
-                .map(|arg| String::from(arg))
-                .collect();
+                let mut args: Vec<_> = cmd
+                    .split_whitespace()
+                    .map(|arg| String::from(arg))
+                    .collect();
                 // 将shell当前的目录添加到参数列表末尾
                 args.push(cur_path.clone());
                 // 获取要执行的命令
@@ -84,11 +85,14 @@ use user_lib::file::{File, OpenFlags};
 
 // 将参数转换成\0结尾的C字符串
 fn process_args(args: Vec<String>) -> Vec<String> {
-    return args.iter().map(|arg| {
-        let mut c_arg = arg.clone();
-        c_arg.push('\0');
-        return c_arg;
-    }).collect();
+    return args
+        .iter()
+        .map(|arg| {
+            let mut c_arg = arg.clone();
+            c_arg.push('\0');
+            return c_arg;
+        })
+        .collect();
 }
 
 fn exec_cd(args: Vec<String>, cur_path: &mut String) -> String {
@@ -109,7 +113,7 @@ fn exec_cd(args: Vec<String>, cur_path: &mut String) -> String {
                 return cur_path.clone();
             }
             return abs;
-        },
+        }
         Err(code) => {
             match code {
                 NOT_DIR_ERROR => println!("[error] Not a directory: {}", abs),
@@ -147,7 +151,7 @@ fn exec_type(args: Vec<String>, abs_path: &mut String) {
         }
         if builtins.contains(cmd) {
             println!("{} is a shell builtin", cmd);
-        }else {
+        } else {
             let length = abs_path.len();
             abs_path.push_str(cmd.as_str());
             abs_path.push('\0');
@@ -155,7 +159,7 @@ fn exec_type(args: Vec<String>, abs_path: &mut String) {
                 Ok(file) => {
                     println!("{} is {}", cmd, abs_path);
                     file.close();
-                },
+                }
                 Err(_) => println!("type: {} not found", cmd),
             }
             abs_path.truncate(length);

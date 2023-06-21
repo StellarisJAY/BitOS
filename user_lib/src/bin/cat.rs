@@ -6,7 +6,7 @@ extern crate user_lib;
 extern crate alloc;
 
 use alloc::string::String;
-use user_lib::file::{File, OpenFlags, get_absolute_path};
+use user_lib::file::{get_absolute_path, File, OpenFlags};
 
 #[no_mangle]
 pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
@@ -29,7 +29,7 @@ pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
             }
             println!("");
             file.close();
-        },
+        }
         Err(_) => {
             println!("[error] File not found: {}", absolute_path);
         }
