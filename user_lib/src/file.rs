@@ -142,3 +142,43 @@ impl FileStat {
         }
     }
 }
+
+// 以当前目录为起点，根据相对路径获取绝对路径
+pub fn get_absolute_path(relative: String, cur_path: String) -> String {
+    // 将所在当前目录 和 相对目录 拆分，过滤掉空字符串
+    let mut abs: Vec<_> = cur_path.clone()
+    .split('/')
+    .filter(|item| !item.is_empty())
+    .map(|item| String::from(item.trim_matches('\0')))
+    .collect();
+    let parts: Vec<_> = relative.split('/')
+    .filter(|item| !item.is_empty())
+    .map(|item| String::from(item.trim_matches('\0')))
+    .collect();
+
+    for part in parts.iter() {
+        let raw = part.as_str();
+        if raw == "." {
+            continue;
+        }
+        // 上级目录，abs出栈
+        if raw == ".." {
+            if let None = abs.pop() {
+                break;
+            }
+        }else {
+            // abs入栈
+            abs.push(part.clone());
+        }
+    }
+
+    let mut result = String::from("");
+    for part in abs.iter() {
+        result.push('/');
+        result.push_str(part.as_str());
+    }
+    if result.is_empty() {
+        result.push('/');
+    }
+    return result;
+}
