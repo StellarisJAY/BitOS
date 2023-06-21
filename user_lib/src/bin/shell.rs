@@ -38,7 +38,7 @@ pub fn main() -> i32 {
     // shell当前所在的目录
     let mut cur_path = String::from("/");
     println!("User shell entered, input \"help\" to list available commands...");
-    print!("{} >>> ", cur_path);
+    print!("\x1b[92mshell\x1b[0m:\x1b[94m{}\x1b[0m$ ", cur_path);
     let mut cmd = String::new();
     loop {
         let byte = get_char();
@@ -70,7 +70,7 @@ pub fn main() -> i32 {
                 }
 
                 cmd.clear();
-                print!("{} >>> ", cur_path);
+                print!("\x1b[92mshell\x1b[0m:\x1b[94m{}\x1b[0m$ ", cur_path);
             }
             _ => {
                 put_char(byte);
@@ -120,7 +120,7 @@ fn exec_cd(args: Vec<String>, cur_path: &mut String) -> String {
                 FILE_NOT_FOUND_ERROR => println!("File not found: {}", abs),
                 _ => println!("[error] fs error, code: {}", code),
             }
-            return abs;
+            return cur_path.clone();
         }
     }
 }
