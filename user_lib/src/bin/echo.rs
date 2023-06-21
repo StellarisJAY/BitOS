@@ -11,8 +11,8 @@ use alloc::string::String;
 pub fn main(argc: usize, argv: &[&'static str]) -> i32 {
     let mut msg = String::new();
     for (i, arg) in argv.iter().enumerate() {
-        msg.push_str(*arg);
         if i != argc - 1 {
+            msg.push_str(*arg);
             msg.push(' ');
         }
     }
