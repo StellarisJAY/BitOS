@@ -1,5 +1,6 @@
 use crate::arch::riscv::register::clear_sip_soft;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
+use crate::driver::plic::handle_irq;
 use crate::mem::address::VirtAddr;
 use crate::syscall::handle_syscall;
 use crate::task::scheduler::{
@@ -15,7 +16,6 @@ use riscv::register::scause::{
     Trap::{Exception, Interrupt},
 };
 use riscv::register::{sepc, sstatus, stval, stvec};
-
 pub mod context;
 
 extern "C" {
@@ -69,6 +69,10 @@ pub unsafe fn user_trap_handler() {
                 panic!("store page fault");
             }
         }
+        // 外设中断
+        Interrupt(SupervisorExternal) => {
+            handle_irq();
+        }
         _ => {
             kernel!("{:?}, stval: {:#x}", scause.cause(), val);
             panic!("unhandled trap")
@@ -85,7 +89,7 @@ pub fn kernel_trap_handler() {
         Exception(e) => {
             kernel!("exception: {:?}, val: {:#x}", e, val);
             panic!("kernel exception")
-        }
+        },
         _ => panic!("unhandled trap"),
     }
 }

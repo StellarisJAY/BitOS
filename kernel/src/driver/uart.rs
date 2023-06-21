@@ -1,7 +1,7 @@
 use crate::arch::riscv::qemu::layout::UART0;
+use alloc::collections::VecDeque;
 use core::fmt::*;
 use lazy_static::lazy_static;
-use spin::lazy::Lazy;
 use spin::mutex::Mutex;
 
 // uart 寄存器组，see：https://www.lammertbies.nl/comm/info/serial-uart
@@ -20,17 +20,31 @@ const FCR_FIFO_CLEAR: usize = 3 << 1;
 const LCR_EIGHT_BITS: usize = 3 << 0; // no parity
 const LCR_BAUD_LATCH: usize = 1 << 7; // DLAB, DLL DLM accessible
 
-pub struct Uart {}
+const IER_RX_ENABLE: usize = 1 << 0;
+const IER_TX_ENABLE: usize = 1 << 1;
+
+pub struct Uart {
+    recv_buf: VecDeque<u8>,
+}
 
 lazy_static! {
     pub static ref UART: Mutex<Uart> = Mutex::new(Uart::new());
 }
 
+// 从console读取一个字节，直接从写缓冲中读取
 pub fn get_char() -> Option<u8> {
-    let uart = UART.lock();
-    let ch = uart.get();
+    let mut uart = UART.lock();
+    let ch = uart.get_from_buf();
     drop(uart);
     return ch;
+}
+
+// uart中断处理，接收字节，添加到recv缓冲
+pub fn handle_irq() {
+    let mut uart = UART.lock();
+    if let Some(ch) = uart.get() {
+        uart.recv_buf.push_back(ch);
+    }
 }
 
 impl Write for Uart {
@@ -44,7 +58,9 @@ impl Write for Uart {
 
 impl Uart {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            recv_buf: VecDeque::new(),
+        }
     }
     pub fn init() {
         // 关闭中断
@@ -58,6 +74,8 @@ impl Uart {
         write_reg(LCR, LCR_EIGHT_BITS as u8);
         // 开启FIFO
         write_reg(FCR, FCR_FIFO_ENABLE as u8 | FCR_FIFO_CLEAR as u8);
+        // enable transmit and receive interrupts.
+        write_reg(IER, IER_TX_ENABLE as u8);
     }
 
     pub fn put(&self, ch: u8) {
@@ -83,6 +101,10 @@ impl Uart {
         } else {
             return None;
         }
+    }
+
+    pub fn get_from_buf(&mut self) -> Option<u8> {
+        self.recv_buf.pop_front()
     }
 }
 
