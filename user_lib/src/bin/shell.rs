@@ -12,7 +12,7 @@ use user_lib::utils::{get_char, put_char};
 use alloc::collections::BTreeSet;
 use lazy_static::lazy_static;
 use user_lib::sync::cell::SafeCell;
-use user_lib::file::{FILE_EXIST_ERROR, NOT_DIR_ERROR, FILE_NOT_FOUND_ERROR};
+use user_lib::file::{get_absolute_path, NOT_DIR_ERROR, FILE_NOT_FOUND_ERROR};
 
 const CR: u8 = b'\r';
 const LF: u8 = b'\n';
@@ -62,9 +62,8 @@ pub fn main() -> i32 {
                 args.push(cur_path.clone());
                 // 获取要执行的命令
                 let app = args.remove(0);
-
                 match app.as_str() {
-                    "cd" => exec_cd(args, &mut cur_path),
+                    "cd" => cur_path = exec_cd(args, &mut cur_path),
                     "type" => exec_type(args, &mut app_absolute_path),
                     _ => _ = exec_app(args, app.clone(), &mut app_absolute_path),
                 }
@@ -92,34 +91,32 @@ fn process_args(args: Vec<String>) -> Vec<String> {
     }).collect();
 }
 
-fn exec_cd(args: Vec<String>, cur_path: &mut String) {
+fn exec_cd(args: Vec<String>, cur_path: &mut String) -> String {
     if args.len() <= 1 {
         println!("[error] empty path");
-        return;
+        return cur_path.clone();
     }
     let args = process_args(args);
     let path = args[0].as_str();
-    let length = cur_path.len();
-    cur_path.push_str(path);
-
-    match File::open(cur_path.as_str(), OpenFlags::RDONLY) {
+    let abs = get_absolute_path(String::from(path), cur_path.clone());
+    let mut file_path = abs.clone();
+    // 末尾插入\0
+    file_path.push('\0');
+    match File::open(file_path.as_str(), OpenFlags::RDONLY) {
         Ok(file) => {
             if !file.is_dir() {
-                println!("[error] Not a directory: {}", path);
-                cur_path.truncate(length);
-                return;
+                println!("[error] Not a directory: {}", abs);
+                return cur_path.clone();
             }
-            cur_path.pop();
-            return;
+            return abs;
         },
         Err(code) => {
             match code {
-                NOT_DIR_ERROR => println!("[error] Not a directory: {}", path),
-                FILE_NOT_FOUND_ERROR => println!("File not found: {}", path),
+                NOT_DIR_ERROR => println!("[error] Not a directory: {}", abs),
+                FILE_NOT_FOUND_ERROR => println!("File not found: {}", abs),
                 _ => println!("[error] fs error, code: {}", code),
             }
-            cur_path.truncate(length);
-            return;
+            return abs;
         }
     }
 }
