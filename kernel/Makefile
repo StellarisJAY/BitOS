@@ -16,6 +16,8 @@ QEMU_OPTS = -machine virt \
 	    -global virtio-mmio.force-legacy=$(LEGACY_VIRTIO) \
 	    -drive file=$(FS_IMG),if=none,format=raw,id=x0 \
 	    -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
+		-device e1000,netdev=net0,bus=pcie.0 \
+		-netdev user,id=net0,hostfwd=udp::6200-:2000,hostfwd=tcp::6201-:80 \
 	    -nographic 
 build:
 	@cargo build --release
@@ -34,3 +36,6 @@ gdb:
 	@$(TOOL)gdb -ex 'file $(TARGET)kernel' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 dtb:bin
 	@$(QEMU) $(QEMU_OPTS) $(DUMP_DTB)
+dts:dtb
+	@dtc -I dtb -O dts -o riscv64-virt.dts riscv64-virt.dtb
+	@cat riscv64-virt.dts
