@@ -9,5 +9,4 @@ pub fn init() {
     pci::scan_pci_bus();
     plic::init_plic();
     blk::init_blk();
-    net::init();
 }

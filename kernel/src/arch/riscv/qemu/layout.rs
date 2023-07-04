@@ -14,7 +14,7 @@ pub const SHUTDOWN0: usize = 0x10_0000;
 pub const VIRT_PLIC: usize = 0x0c00_0000;
 
 pub const PCIE0: usize = 0x3000_0000;
-pub const E1000_BASE: usize = 0x3000_0000;
+pub const E1000_REGS: usize = 0x4000_0000;
 
 // MMIO地址范围
 pub const MMIO: &[(usize, usize)] = &[
@@ -23,7 +23,7 @@ pub const MMIO: &[(usize, usize)] = &[
     (VIRTIO0, VIRTIO0 + 0x1000),
     (SHUTDOWN0, SHUTDOWN0 + 0x1000),
     (VIRT_PLIC, VIRT_PLIC + 0x30_0000),
-    (E1000_BASE, E1000_BASE + 0x10000000),
+    (E1000_REGS, E1000_REGS + 0x10000000),
 ];
 
 // PLIC中断源列表
